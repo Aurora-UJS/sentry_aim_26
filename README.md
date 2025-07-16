@@ -36,7 +36,7 @@ sentry_aim_26/
 mkdir build && cd build
 cmake ..
 make
-./sentry_main
+./bin/sentry_aim_26
 ```
 
 ## 后续建议
