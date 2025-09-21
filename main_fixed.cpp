@@ -16,7 +16,7 @@ auto processImage(const std::string& input_path, const toml::Config& config) -> 
     g_detection_config.updateFromToml(config);
     
     ArmorDetector detector;
-    auto init_result = detector.initModel(config.model.path);
+    auto init_result = detector.init(config.model.model_path);
     if (!init_result.has_value()) {
         return std::unexpected("Failed to initialize detector: " + init_result.error());
     }
@@ -34,46 +34,24 @@ auto processImage(const std::string& input_path, const toml::Config& config) -> 
 
     auto objects = result.value();
     
-    // 绘制检测结果 - 针对YOLO-pose模型优化
+    // 绘制检测结果
     for (const auto& obj : objects) {
-        // 对于pose模型，优先显示关键点连线而不是矩形框
-        if (!obj.pts.empty()) {
-            // 绘制装甲板的4个角点连线
+        cv::rectangle(image, obj.rect, cv::Scalar(0, 255, 0), 2);
+        
+        std::string label = "cls:" + std::to_string(obj.cls) + 
+                           " color:" + std::to_string(obj.color) + 
+                           " conf:" + std::to_string(obj.prob).substr(0, 4);
+        
+        cv::putText(image, label, obj.rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                    cv::Scalar(255, 255, 0), 1);
+        
+        if (config.display.show_detection_polygons && !obj.pts.empty()) {
             std::vector<cv::Point> int_pts;
             for (const auto& pt : obj.pts) {
                 int_pts.emplace_back(static_cast<int>(pt.x), static_cast<int>(pt.y));
             }
             cv::polylines(image, int_pts, true, cv::Scalar(0, 255, 0), 2);
-            
-            // 在关键点上绘制小圆点
-            for (const auto& pt : obj.pts) {
-                cv::circle(image, cv::Point(static_cast<int>(pt.x), static_cast<int>(pt.y)), 
-                          3, cv::Scalar(0, 0, 255), -1);
-            }
-        } else {
-            // 如果没有关键点，则显示矩形框作为备选
-            cv::rectangle(image, obj.rect, cv::Scalar(0, 255, 0), 2);
         }
-        
-        // 生成简化标签：颜色字母 + 类别名称 + 置信度
-        std::vector<std::string> color_symbols = {"R", "B", "G", "P"}; // 红蓝灰紫
-        std::vector<std::string> class_names = {"G", "1", "2", "3", "4", "5", "O", "Bs", "Bb"};
-        
-        std::string color_str = (obj.color >= 0 && obj.color < color_symbols.size()) ? 
-                               color_symbols[obj.color] : "?";
-        std::string class_str = (obj.cls >= 0 && obj.cls < class_names.size()) ? 
-                               class_names[obj.cls] : "?";
-        
-        std::string label = color_str + class_str + " " + 
-                           std::to_string(obj.prob).substr(0, 4);
-        
-        // 标签显示在第一个关键点附近，如果没有关键点则显示在矩形框上
-        cv::Point label_pos = !obj.pts.empty() ? 
-            cv::Point(static_cast<int>(obj.pts[0].x), static_cast<int>(obj.pts[0].y - 10)) :
-            obj.rect.tl();
-            
-        cv::putText(image, label, label_pos, cv::FONT_HERSHEY_SIMPLEX, 0.5,
-                    cv::Scalar(255, 255, 0), 1);
     }
 
     // 显示结果
@@ -84,7 +62,7 @@ auto processImage(const std::string& input_path, const toml::Config& config) -> 
     }
 
     // 保存结果
-    if (config.output.save_images && !config.output.output_path.empty()) {
+    if (config.output.save_image && !config.output.output_path.empty()) {
         cv::imwrite(config.output.output_path, image);
         std::cout << "图片保存至: " << config.output.output_path << std::endl;
     }
@@ -98,7 +76,7 @@ auto processCamera(const toml::Config& config) -> std::expected<void, std::strin
     g_detection_config.updateFromToml(config);
     
     ArmorDetector detector;
-    auto init_result = detector.initModel(config.model.path);
+    auto init_result = detector.init(config.model.model_path);
     if (!init_result.has_value()) {
         return std::unexpected("Failed to initialize detector: " + init_result.error());
     }
@@ -135,7 +113,7 @@ auto processCamera(const toml::Config& config) -> std::expected<void, std::strin
                 cv::putText(frame, label, obj.rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 0.5,
                             cv::Scalar(255, 255, 0), 1);
                 
-                if (config.display.show_detection_info && !obj.pts.empty()) {
+                if (config.display.show_detection_polygons && !obj.pts.empty()) {
                     std::vector<cv::Point> int_pts;
                     for (const auto& pt : obj.pts) {
                         int_pts.emplace_back(static_cast<int>(pt.x), static_cast<int>(pt.y));
@@ -195,7 +173,7 @@ int main(int argc, char* argv[]) {
     }
     
     std::cout << "使用配置文件: " << config_path << std::endl;
-    std::cout << "模型文件: " << config.model.path << std::endl;
+    std::cout << "模型文件: " << config.model.model_path << std::endl;
     
     // 根据命令行参数选择模式
     if (argc >= 3) {

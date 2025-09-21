@@ -9,7 +9,7 @@ auto processVideo(const std::string& input_path, const toml::Config& config) -> 
     g_detection_config.updateFromToml(config);
     
     ArmorDetector detector;
-    auto init_result = detector.initModel(config.model.path);
+    auto init_result = detector.init(config.model.model_path);
     if (!init_result.has_value()) {
         return std::unexpected("Failed to initialize detector: " + init_result.error());
     }
@@ -44,18 +44,11 @@ auto processVideo(const std::string& input_path, const toml::Config& config) -> 
     cv::Mat frame;
     int frame_count = 0;
     int detection_count = 0;
-    int processed_frame_count = 0;
     auto start_time = std::chrono::high_resolution_clock::now();
     auto last_time = start_time;
 
     while (cap.read(frame)) {
         frame_count++;
-        
-        // 跳帧处理 - 只处理指定间隔的帧
-        if (frame_count % config.performance.frame_skip != 0) {
-            continue;
-        }
-        processed_frame_count++;
         auto current_time = std::chrono::high_resolution_clock::now();
 
         // 检测
@@ -77,7 +70,7 @@ auto processVideo(const std::string& input_path, const toml::Config& config) -> 
                 cv::putText(frame, label, obj.rect.tl(), cv::FONT_HERSHEY_SIMPLEX, 0.5,
                             cv::Scalar(255, 255, 0), 1);
                 
-                if (config.display.show_detection_info && !obj.pts.empty()) {
+                if (config.display.show_detection_polygons && !obj.pts.empty()) {
                     std::vector<cv::Point> int_pts;
                     for (const auto& pt : obj.pts) {
                         int_pts.emplace_back(static_cast<int>(pt.x), static_cast<int>(pt.y));
@@ -99,7 +92,7 @@ auto processVideo(const std::string& input_path, const toml::Config& config) -> 
 
         // 显示进度信息
         if (config.display.show_detection_info) {
-            std::string progress = "Frame: " + std::to_string(processed_frame_count) + "/" + std::to_string(total_frames / config.performance.frame_skip);
+            std::string progress = "Frame: " + std::to_string(frame_count) + "/" + std::to_string(total_frames);
             cv::putText(frame, progress, cv::Point(10, 60), cv::FONT_HERSHEY_SIMPLEX, 0.7,
                         cv::Scalar(0, 255, 255), 2);
         }
@@ -109,9 +102,7 @@ auto processVideo(const std::string& input_path, const toml::Config& config) -> 
         // 实时显示
         if (config.display.enable_realtime_display) {
             cv::imshow(config.display.window_title, frame);
-            // 根据视频原始帧率计算等待时间
-            int wait_ms = static_cast<int>(1000.0 / fps);
-            char key = cv::waitKey(wait_ms);
+            char key = cv::waitKey(1);
             if (key == 27) break; // ESC键退出
         }
 
@@ -121,8 +112,8 @@ auto processVideo(const std::string& input_path, const toml::Config& config) -> 
         }
 
         // 每10帧输出一次进度
-        if (processed_frame_count % 10 == 0 && config.debug.print_detection_stats) {
-            std::cout << "处理进度: " << (processed_frame_count * 100 / (total_frames / config.performance.frame_skip)) << "%" << std::endl;
+        if (frame_count % 10 == 0 && config.debug.print_detection_stats) {
+            std::cout << "处理进度: " << (frame_count * 100 / total_frames) << "%" << std::endl;
         }
     }
 
@@ -132,12 +123,10 @@ auto processVideo(const std::string& input_path, const toml::Config& config) -> 
     if (config.debug.print_detection_stats) {
         std::cout << "\n=== 处理完成 ===" << std::endl;
         std::cout << "总帧数: " << frame_count << std::endl;
-        std::cout << "处理帧数: " << processed_frame_count << std::endl;
-        std::cout << "跳帧间隔: " << config.performance.frame_skip << std::endl;
         std::cout << "有检测结果的帧数: " << detection_count << std::endl;
-        std::cout << "检测率: " << (processed_frame_count > 0 ? (detection_count * 100.0 / processed_frame_count) : 0) << "%" << std::endl;
+        std::cout << "检测率: " << (frame_count > 0 ? (detection_count * 100.0 / frame_count) : 0) << "%" << std::endl;
         std::cout << "总耗时: " << total_duration.count() << "ms" << std::endl;
-        std::cout << "平均处理速度: " << (total_duration.count() > 0 ? (processed_frame_count * 1000.0 / total_duration.count()) : 0) << " FPS" << std::endl;
+        std::cout << "平均处理速度: " << (total_duration.count() > 0 ? (frame_count * 1000.0 / total_duration.count()) : 0) << " FPS" << std::endl;
     }
 
     cap.release();

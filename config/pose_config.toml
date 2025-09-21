@@ -1,0 +1,67 @@
+# 姿态估计模型配置文件
+# 适用于 aim.onnx 等pose模型
+
+[model]
+# Pose模型文件路径
+path = "assets/models/onnx/autoaim_0506.onnx"
+# 输入图像尺寸 - 根据模型调整
+input_width = 28
+input_height = 20
+# 检测阈值 - pose模型通常不需要阈值
+confidence_threshold = 0.75
+nms_threshold = 0.5
+# 最大检测数量
+max_detections = 20
+
+[detection]
+# Pose模型输出维度 (aim.onnx输出9维)
+num_classes = 1
+num_colors = 1
+# 类别名称
+class_names = ["pose"]
+# 颜色名称
+color_names = ["default"]
+
+[display]
+# 是否实时显示检测结果
+enable_realtime_display = true
+# 显示窗口标题
+window_title = "Pose Estimation"
+# 是否显示检测信息
+show_detection_info = true
+# 是否显示FPS
+show_fps = true
+# 检测框颜色 (BGR格式)
+bbox_color = [0, 255, 0]
+# 关键点颜色
+keypoint_color = [0, 0, 255]
+# 文本颜色
+text_color = [255, 255, 0]
+
+[output]
+# 是否保存输出视频
+save_video = false
+# 输出视频路径
+output_path = "output/pose_result.mp4"
+# 视频编码格式
+video_codec = "mp4v"
+# 是否保存检测结果图片
+save_images = true
+# 图片输出目录
+image_output_dir = "output/images"
+
+[performance]
+# 处理帧数限制 (0表示无限制)
+max_frames = 0
+# 跳帧间隔 - pose模型可能需要更高频率
+frame_skip = 1
+# 是否启用多线程
+enable_multithreading = false
+
+[debug]
+# 是否启用详细日志
+verbose_logging = true
+# 是否打印模型信息
+print_model_info = true
+# 是否打印检测统计
+print_detection_stats = true

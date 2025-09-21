@@ -1,0 +1,67 @@
+# 装甲板检测配置文件 - 优化误识别问题
+# 注意：请根据您使用的模型类型选择正确配置
+
+[model]
+# 模型文件路径 - 使用22维输出的装甲板检测模型
+path = "assets/models/onnx/autoaim_0526.onnx"
+# 输入图像尺寸 - 必须匹配模型期望的尺寸
+input_width = 640
+input_height = 640
+# Detection 配置 - 稳定性优化版本
+[detection]
+confidence_threshold = 0.75 # 大幅提高置信度阈值，减少误识别
+nms_threshold = 0.4         # 提高NMS阈值，减少重复检测
+# 最大检测数量 - 限制检测数量提高稳定性
+max_detections = 2
+# 类别数量 - 根据你的模型输出: G/1/2/3/4/5/O/Bs/Bb (9个类别)
+num_classes = 9
+# 颜色数量 - 红蓝灰紫 (4种颜色)
+num_colors = 4
+# 类别名称 - 按模型输出顺序
+class_names = ["G", "1", "2", "3", "4", "5", "O", "Bs", "Bb"]
+# 颜色名称 - 红蓝灰紫，简化标识
+color_names = ["R", "B", "G", "P"]
+
+[display]
+# 是否实时显示检测结果
+enable_realtime_display = true
+# 显示窗口标题
+window_title = "Armor Detection - Anti False Positive"
+# 是否显示检测信息
+show_detection_info = true
+# 是否显示FPS
+show_fps = true
+# 检测框颜色 (BGR格式) - 使用更明显的绿色
+bbox_color = [0, 255, 0]
+# 关键点颜色 - 红色更醒目
+keypoint_color = [0, 0, 255]
+# 文本颜色 - 黄色便于阅读
+text_color = [0, 255, 255]
+
+[output]
+# 是否保存输出视频
+save_video = false
+# 输出视频路径
+output_path = "output/detection_result.mp4"
+# 视频编码格式
+video_codec = "mp4v"
+# 是否保存检测结果图片
+save_images = false
+# 图片输出目录
+image_output_dir = "output/images"
+
+[performance]
+# 处理帧数限制 (0表示无限制)
+max_frames = 0
+# 跳帧间隔 - 设置为0完全取消跳帧，处理每一帧
+frame_skip = 0
+# 是否启用多线程
+enable_multithreading = true
+
+[debug]
+# 详细日志
+verbose_logging = false
+# 是否打印模型信息
+print_model_info = false
+# 是否打印检测统计  
+print_detection_stats = true

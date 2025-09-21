@@ -17,19 +17,34 @@
 #include <optional>
 #include <span>
 #include <vector>
+#include "sentry_aim_26/core/config.hpp"
 
-// 常量定义
-namespace config {
-constexpr int INPUT_W = 416;
-constexpr int INPUT_H = 416;
-constexpr int NUM_CLASSES = 8;
-constexpr int NUM_COLORS = 4;
-constexpr int TOPK = 128;
-constexpr float NMS_THRESH = 0.3f;
-constexpr float BBOX_CONF_THRESH = 0.75f;
-constexpr float MERGE_CONF_ERROR = 0.15f;
-constexpr float MERGE_MIN_IOU = 0.9f;
-} // namespace config
+// 运行时配置存储
+struct DetectionConfig {
+    int input_w = 640;
+    int input_h = 640;
+    int num_classes = 8;
+    int num_colors = 4;
+    int topk = 128;
+    float nms_thresh = 0.3f;
+    float bbox_conf_thresh = 0.3f;
+    float merge_conf_error = 0.3f;
+    float merge_min_iou = 0.5f;
+    
+    // 从TOML配置更新
+    void updateFromToml(const toml::Config& config) {
+        input_w = config.model.input_width;
+        input_h = config.model.input_height;
+        num_classes = config.detection.num_classes;
+        num_colors = config.detection.num_colors;
+        nms_thresh = config.model.nms_threshold;
+        bbox_conf_thresh = config.model.confidence_threshold;
+        topk = config.model.max_detections;
+    }
+};
+
+// 全局配置实例
+extern DetectionConfig g_detection_config;
 
 // 结构体定义
 struct ArmorObject {
@@ -69,7 +84,7 @@ class ArmorDetector {
 
     // 删除拷贝构造和赋值
     ArmorDetector(const ArmorDetector&) = delete;
-    ArmorDetector& operator=(const ArmorDetector&) = delete;
+    ArmorDetector& operator=(ArmorDetector&) = delete;
 
     // 允许移动构造和赋值
     ArmorDetector(ArmorDetector&&) = default;
@@ -85,4 +100,12 @@ class ArmorDetector {
     std::optional<Ort::AllocatedStringPtr> input_name_; // 使用 optional 包装
     Ort::AllocatorWithDefaultOptions allocator_;
     bool model_initialized_ = false;
+    
+    // 时序稳定性相关
+    std::vector<ArmorObject> previous_detections_;
+    static constexpr float STABILITY_DISTANCE_THRESHOLD = 50.0f; // 像素距离阈值
+    static constexpr float STABILITY_CONFIDENCE_FACTOR = 0.1f;   // 稳定性置信度加成
+    
+    // 时序稳定性函数
+    auto applyTemporalStability(std::vector<ArmorObject>& current_detections) -> void;
 };
