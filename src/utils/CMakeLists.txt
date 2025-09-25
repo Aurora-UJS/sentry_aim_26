@@ -1,6 +1,6 @@
 add_library(utils
     logger/logger.cpp
-    mathmatic/extended_kalman_filter.cpp
+
 )
 target_include_directories(utils
     PUBLIC

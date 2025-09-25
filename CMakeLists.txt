@@ -26,7 +26,7 @@ find_package(Ceres REQUIRED)
 # Core library
 add_library(sp_vision_refactoring
     src/utils/logger/logger.cpp
-    src/utils/mathmatic/extended_kalman_filter.cpp
+
     # src/core/auto_aim.cpp # Uncomment when implemented
     # src/io/serial_io.cpp  # Uncomment when implemented
 )
