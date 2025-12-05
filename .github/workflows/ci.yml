@@ -32,8 +32,7 @@ jobs:
           sudo add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main"
           sudo apt-get update
           sudo apt-get install -y clang-format-19
-          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-19 100
-          clang-format --version
+          clang-format-19 --version
 
       - name: 检查代码格式
         run: |
@@ -50,12 +49,12 @@ jobs:
             exit 0
           fi
           
-          # 检查格式
+          # 检查格式（直接使用 clang-format-19）
           FAILED=0
           for file in $FILES; do
-            if ! clang-format --dry-run --Werror "$file" 2>/dev/null; then
+            if ! clang-format-19 --dry-run --Werror "$file" 2>/dev/null; then
               echo "❌ 格式错误: $file"
-              clang-format --dry-run "$file" 2>&1 | head -20
+              clang-format-19 --dry-run "$file" 2>&1 | head -20
               FAILED=1
             fi
           done
