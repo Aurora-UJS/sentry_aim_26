@@ -1,8 +1,10 @@
-# sp_aim_refactoring
+# AURORA_AIM
 
 ## tool chain
 
-clang19 + cmake 3.28 + ninja 1.13.1 + vcpkg + git
+clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git
+
+代码cpp标准采用c++20
 
 ## 框架核心
 

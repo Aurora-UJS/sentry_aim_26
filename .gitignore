@@ -1,3 +1,12 @@
 build/
 .cache/
 logs/
+vcpkg_installed/
+clang-tidy-output.txt
+*.log
+
+# CMake 生成文件
+compile_commands.json
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake

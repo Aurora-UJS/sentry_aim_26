@@ -7,4 +7,4 @@ target_include_directories(utils
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../include>
 )
 target_link_libraries(utils PUBLIC spdlog::spdlog fmt::fmt Eigen3::Eigen)
-target_link_libraries(sp_vision_refactoring PUBLIC utils)
+target_link_libraries(aurora_vision PUBLIC utils)

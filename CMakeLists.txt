@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(sp_vision_refactoring LANGUAGES CXX)
+project(aurora_vision LANGUAGES CXX)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -24,7 +24,7 @@ find_package(Boost REQUIRED COMPONENTS system)
 find_package(Ceres REQUIRED)
 
 # Core library
-add_library(sp_vision_refactoring
+add_library(aurora_vision
     src/utils/logger/logger.cpp
 
     # src/core/auto_aim.cpp # Uncomment when implemented
@@ -32,7 +32,7 @@ add_library(sp_vision_refactoring
 )
 
 # Include directories
-target_include_directories(sp_vision_refactoring
+target_include_directories(aurora_vision
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     PRIVATE
@@ -41,7 +41,7 @@ target_include_directories(sp_vision_refactoring
 )
 
 # Link dependencies
-target_link_libraries(sp_vision_refactoring
+target_link_libraries(aurora_vision
     PRIVATE
         opencv_core
         opencv_imgproc
@@ -56,13 +56,13 @@ target_link_libraries(sp_vision_refactoring
 )
 
 # Test executable
-add_executable(test_sp_vision
+add_executable(test_aurora_vision
     tests/logger_module_test.cpp
     # tests/detector_test.cpp  # Uncomment when implemented
     # tests/serial_test.cpp    # Uncomment when implemented
     # tests/auto_aim_test.cpp  # Uncomment when implemented
 )
-target_link_libraries(test_sp_vision PRIVATE sp_vision_refactoring Catch2::Catch2WithMain)
+target_link_libraries(test_aurora_vision PRIVATE aurora_vision Catch2::Catch2WithMain)
 
 # Subdirectories
 add_subdirectory(src/utils)
@@ -70,13 +70,13 @@ add_subdirectory(task)
 add_subdirectory(tests)
 
 # Installation
-install(TARGETS sp_vision_refactoring utils
-        EXPORT sp_vision_refactoringTargets
+install(TARGETS aurora_vision utils
+        EXPORT aurora_visionTargets
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib
         RUNTIME DESTINATION bin)
 install(DIRECTORY include/ DESTINATION include)
-install(EXPORT sp_vision_refactoringTargets
-        FILE sp_vision_refactoringTargets.cmake
-        NAMESPACE sp_vision_refactoring::
-        DESTINATION lib/cmake/sp_vision_refactoring)
+install(EXPORT aurora_visionTargets
+        FILE aurora_visionTargets.cmake
+        NAMESPACE aurora_vision::
+        DESTINATION lib/cmake/aurora_vision)

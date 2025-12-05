@@ -1,5 +1,5 @@
 {
-    "name": "sp-vision-refactoring",
+    "name": "aurora-vision",
     "version": "0.1.0",
     "dependencies": [
         "ceres"

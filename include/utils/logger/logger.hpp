@@ -6,6 +6,6 @@
 namespace utils {
 std::shared_ptr<spdlog::logger> logger();
 
-} // namespace utils
+}  // namespace utils
 
-#endif // UTILS__LOGGER_HPP
+#endif  // UTILS__LOGGER_HPP

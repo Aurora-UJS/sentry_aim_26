@@ -9,4 +9,4 @@ target_include_directories(task
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
 )
-target_link_libraries(task PUBLIC sp_vision_refactoring)
+target_link_libraries(task PUBLIC aurora_vision)
