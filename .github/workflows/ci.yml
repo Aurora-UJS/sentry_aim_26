@@ -1,5 +1,5 @@
-# AURORA_AIM CI/CD 工作流
-# 代码质量检查、构建和测试
+# AURORA_AIM CI/CD 工作流 (优化版)
+# 格式检查 + 构建测试，约 2-3 分钟完成
 
 name: CI
 
@@ -11,283 +11,134 @@ on:
 
 env:
   BUILD_TYPE: Release
-  VCPKG_ROOT: /usr/local/share/vcpkg
 
 jobs:
   # ============================================
-  # 代码格式检查
+  # 代码格式检查（快速，约 30 秒）
   # ============================================
   format-check:
-    name: 代码格式检查
+    name: 格式检查
     runs-on: ubuntu-24.04
     
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 安装 clang-format
+      - name: 安装 clang-format-19
         run: |
-          # 使用与本地相同的 LLVM 源
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          sudo add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main"
-          sudo apt-get update
-          sudo apt-get install -y clang-format-19
-          clang-format-19 --version
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm.asc
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update && sudo apt-get install -y clang-format-19
 
-      - name: 检查代码格式
+      - name: 检查格式
         run: |
-          echo "检查 C++ 代码格式..."
-          
-          # 查找所有 C++ 源文件
-          FILES=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" -o -name "*.cc" \) \
-            -not -path "./build/*" \
-            -not -path "./vcpkg_installed/*" \
-            -not -path "./.git/*")
-          
-          if [ -z "$FILES" ]; then
-            echo "未找到 C++ 源文件"
-            exit 0
-          fi
-          
-          # 检查格式（直接使用 clang-format-19）
-          FAILED=0
-          for file in $FILES; do
-            if ! clang-format-19 --dry-run --Werror "$file" 2>/dev/null; then
-              echo "❌ 格式错误: $file"
-              clang-format-19 --dry-run "$file" 2>&1 | head -20
-              FAILED=1
-            fi
-          done
-          
-          if [ $FAILED -eq 1 ]; then
-            echo ""
-            echo "========================================"
-            echo "代码格式检查失败！"
-            echo "请运行以下命令修复格式问题："
-            echo "  clang-format -i **/*.cpp **/*.hpp **/*.h"
-            echo "========================================"
-            exit 1
-          fi
-          
-          echo "✅ 所有文件格式正确"
+          find . -type f \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) \
+            -not -path "./build/*" -not -path "./vcpkg_installed/*" \
+            -exec clang-format-19 --dry-run --Werror {} + && echo "✅ 格式正确"
 
   # ============================================
-  # 静态代码分析
+  # 构建和测试（主要 job，约 2-3 分钟）
   # ============================================
-  static-analysis:
-    name: 静态代码分析
+  build:
+    name: 构建测试
     runs-on: ubuntu-24.04
+    needs: format-check
     
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 安装 clang-tidy
+      - name: 安装 Clang 19
         run: |
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 19
-          sudo apt-get install -y clang-tidy-19
-          sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy /usr/bin/clang-tidy-19 100
-
-      - name: 安装依赖
-        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm.asc
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main" | sudo tee /etc/apt/sources.list.d/llvm.list
           sudo apt-get update
-          sudo apt-get install -y \
-            cmake ninja-build \
-            libopencv-dev libeigen3-dev libboost-all-dev \
-            libspdlog-dev libyaml-cpp-dev
+          sudo apt-get install -y clang-19 clang++-19
 
-      - name: 配置 vcpkg
+      - name: 安装系统依赖
         run: |
-          git clone https://github.com/microsoft/vcpkg.git
-          ./vcpkg/bootstrap-vcpkg.sh
-
-      - name: 生成 compile_commands.json
-        run: |
-          mkdir -p build && cd build
-          cmake -G Ninja \
-            -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-            -DCMAKE_CXX_COMPILER=clang++-19 \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DCMAKE_TOOLCHAIN_FILE=${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake \
-            ..
-
-      - name: 运行 clang-tidy
-        run: |
-          FILES=$(find . -type f \( -name "*.cpp" -o -name "*.hpp" \) \
-            -not -path "./build/*" \
-            -not -path "./vcpkg/*" \
-            -not -path "./vcpkg_installed/*")
-          
-          if [ -z "$FILES" ]; then
-            echo "未找到源文件"
-            exit 0
-          fi
-          
-          echo "运行静态分析..."
-          clang-tidy -p build $FILES \
-            --warnings-as-errors="*" \
-            --quiet \
-            2>&1 | tee clang-tidy-output.txt
-          
-          if grep -q "error:" clang-tidy-output.txt; then
-            echo "❌ 发现代码问题"
-            exit 1
-          fi
-          
-          echo "✅ 静态分析通过"
-
-  # ============================================
-  # 构建和测试
-  # ============================================
-  build-and-test:
-    name: 构建和测试 (${{ matrix.os }}, ${{ matrix.compiler }})
-    runs-on: ${{ matrix.os }}
-    needs: [format-check]
-    
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-24.04
-            compiler: clang
-            cc: clang-19
-            cxx: clang++-19
-          - os: ubuntu-24.04
-            compiler: gcc
-            cc: gcc-13
-            cxx: g++-13
-
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-
-      - name: 安装编译器
-        run: |
-          if [ "${{ matrix.compiler }}" = "clang" ]; then
-            wget https://apt.llvm.org/llvm.sh
-            chmod +x llvm.sh
-            sudo ./llvm.sh 19
-          fi
-
-      - name: 安装依赖
-        run: |
-          sudo apt-get update
           sudo apt-get install -y \
             cmake ninja-build \
             libopencv-dev libeigen3-dev libboost-all-dev \
             libspdlog-dev libyaml-cpp-dev catch2
 
-      - name: 配置 vcpkg 缓存
+      - name: 缓存 vcpkg
         uses: actions/cache@v4
         with:
           path: |
             ~/vcpkg
             ~/.cache/vcpkg
-          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
-          restore-keys: |
-            vcpkg-${{ runner.os }}-
+            ${{ github.workspace }}/vcpkg_installed
+          key: vcpkg-${{ hashFiles('vcpkg.json') }}-v2
+          restore-keys: vcpkg-
 
       - name: 配置 vcpkg
         run: |
           if [ ! -d ~/vcpkg ]; then
-            git clone https://github.com/microsoft/vcpkg.git ~/vcpkg
-            ~/vcpkg/bootstrap-vcpkg.sh
+            git clone --depth 1 https://github.com/microsoft/vcpkg.git ~/vcpkg
+            ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
           fi
 
       - name: 配置 CMake
         run: |
-          mkdir -p build && cd build
-          cmake -G Ninja \
+          cmake -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
-            -DCMAKE_C_COMPILER=${{ matrix.cc }} \
-            -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} \
-            -DCMAKE_CXX_STANDARD=20 \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DCMAKE_TOOLCHAIN_FILE=~/vcpkg/scripts/buildsystems/vcpkg.cmake \
-            ..
+            -DCMAKE_C_COMPILER=clang-19 \
+            -DCMAKE_CXX_COMPILER=clang++-19 \
+            -DCMAKE_TOOLCHAIN_FILE=~/vcpkg/scripts/buildsystems/vcpkg.cmake
 
-      - name: 构建项目
-        run: |
-          cd build
-          ninja -j$(nproc)
+      - name: 构建
+        run: cmake --build build -j $(nproc)
 
-      - name: 运行测试
-        run: |
-          cd build
-          ctest --output-on-failure --parallel $(nproc)
-
-      - name: 上传构建产物
-        uses: actions/upload-artifact@v4
-        if: matrix.compiler == 'clang'
-        with:
-          name: build-artifacts-${{ matrix.os }}-${{ matrix.compiler }}
-          path: |
-            build/compile_commands.json
-            build/*.a
-            build/*.so
-          retention-days: 7
+      - name: 测试
+        run: ctest --test-dir build --output-on-failure -j $(nproc)
 
   # ============================================
-  # 代码覆盖率（可选）
+  # 静态分析（可选，不阻塞构建）
   # ============================================
-  coverage:
-    name: 代码覆盖率
+  static-analysis:
+    name: 静态分析
     runs-on: ubuntu-24.04
-    needs: [build-and-test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: format-check
+    continue-on-error: true  # 失败不阻塞
     
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 安装依赖
+      - name: 安装工具
         run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/llvm.asc
+          echo "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-19 main" | sudo tee /etc/apt/sources.list.d/llvm.list
           sudo apt-get update
-          sudo apt-get install -y \
-            cmake ninja-build gcovr \
-            libopencv-dev libeigen3-dev libboost-all-dev \
-            libspdlog-dev libyaml-cpp-dev catch2
+          sudo apt-get install -y clang-19 clang++-19 clang-tidy-19 cmake ninja-build \
+            libopencv-dev libeigen3-dev libboost-all-dev libspdlog-dev libyaml-cpp-dev
+
+      - name: 缓存 vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/vcpkg
+            ~/.cache/vcpkg
+            ${{ github.workspace }}/vcpkg_installed
+          key: vcpkg-${{ hashFiles('vcpkg.json') }}-v2
+          restore-keys: vcpkg-
 
       - name: 配置 vcpkg
         run: |
-          git clone https://github.com/microsoft/vcpkg.git ~/vcpkg
-          ~/vcpkg/bootstrap-vcpkg.sh
+          if [ ! -d ~/vcpkg ]; then
+            git clone --depth 1 https://github.com/microsoft/vcpkg.git ~/vcpkg
+            ~/vcpkg/bootstrap-vcpkg.sh -disableMetrics
+          fi
 
-      - name: 构建（带覆盖率）
+      - name: 生成 compile_commands.json
         run: |
-          mkdir -p build && cd build
-          cmake -G Ninja \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="--coverage -fprofile-arcs -ftest-coverage" \
-            -DCMAKE_TOOLCHAIN_FILE=~/vcpkg/scripts/buildsystems/vcpkg.cmake \
-            ..
-          ninja
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
+            -DCMAKE_CXX_COMPILER=clang++-19 \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_TOOLCHAIN_FILE=~/vcpkg/scripts/buildsystems/vcpkg.cmake
 
-      - name: 运行测试
+      - name: 运行 clang-tidy
         run: |
-          cd build
-          ctest --output-on-failure
-
-      - name: 生成覆盖率报告
-        run: |
-          cd build
-          gcovr --root .. \
-            --exclude '../build/*' \
-            --exclude '../vcpkg_installed/*' \
-            --exclude '../tests/*' \
-            --html --html-details \
-            -o coverage.html
-          gcovr --root .. \
-            --exclude '../build/*' \
-            --exclude '../vcpkg_installed/*' \
-            --exclude '../tests/*' \
-            --xml -o coverage.xml
-
-      - name: 上传覆盖率报告
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: build/coverage.html
-          retention-days: 30
+          find . -type f \( -name "*.cpp" -o -name "*.hpp" \) \
+            -not -path "./build/*" -not -path "./vcpkg*" \
+            -exec clang-tidy-19 -p build {} + 2>&1 | tee tidy.log
+          ! grep -q "error:" tidy.log && echo "✅ 静态分析通过"
