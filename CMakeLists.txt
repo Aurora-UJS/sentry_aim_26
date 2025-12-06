@@ -69,7 +69,7 @@ target_link_libraries(test_aurora_vision PRIVATE aurora_vision Catch2::Catch2Wit
 
 # Subdirectories
 add_subdirectory(src/utils)
-add_subdirectory(task)
+add_subdirectory(tasks)
 add_subdirectory(tests)
 
 # Installation
