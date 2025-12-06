@@ -4,6 +4,8 @@ logs/
 vcpkg_installed/
 clang-tidy-output.txt
 *.log
+.vscode/
+log/
 
 # CMake 生成文件
 compile_commands.json
