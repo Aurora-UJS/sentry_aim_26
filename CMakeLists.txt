@@ -12,11 +12,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Set vcpkg toolchain
 set(CMAKE_TOOLCHAIN_FILE ${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake CACHE STRING "Vcpkg toolchain file")
 
+# Set onnxruntime_DIR if using onnxruntime
+set(ORT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/onnxruntime")
+
 # Fix TBB linking
 set(CMAKE_EXE_LINKER_FLAGS "-Wl,--copy-dt-needed-entries")
 
 # Find dependencies
-find_package(OpenCV REQUIRED COMPONENTS core imgproc highgui)
+find_package(OpenCV REQUIRED COMPONENTS core imgproc highgui dnn)
 find_package(Eigen3 REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(fmt REQUIRED)

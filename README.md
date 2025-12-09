@@ -10,7 +10,7 @@ clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git
 
 为了保持代码清晰、易维护，即使独自开发，也需要遵循以下约定：
 
-1. 接口驱动：所有功能实现必须继承 interface/ 中的抽象类（如 Detector、PnpSolver）。
+1. 接口驱动：所有功能实现必须继承 include/ 中的抽象类（如 Detector、PnpSolver）。
 2. 模块化：将功能分为检测、PNP、跟踪、串口，分别实现，存放在 tasks/auto_aim/ 或 src/io/。
 3. 配置驱动：参数（如检测阈值、串口波特率）通过 yaml/toml 文件（configs/）加载。
 4. 调试友好：使用 spdlog 记录日志，OpenCV 可视化结果，Catch2 编写单元测试。
@@ -34,11 +34,6 @@ clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git
 │   └── auto_aim/
 │       ├── auto_aim.hpp
 │       └── config.hpp
-├── interface/
-│   ├── detector.hpp
-│   ├── pnp_solver.hpp
-│   ├── tracker.hpp
-│   └── serial_driver.hpp
 ├── src/
 │   ├── io/
 │   │   └── serial_io.cpp
@@ -160,4 +155,11 @@ git checkout -b feature/new_detector
 git add tasks/auto_aim/detector_impl.cpp
 git commit -m "[Detector] Add contour-based detection"
 git push origin feature/new_detector
+```
+## 编译命令
+
+``` zsh
+cmake -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ \ 
+      -DCMAKE_TOOLCHAIN_FILE=~/vcpkg/scripts/buildsystems/vcpkg.cmake \
+      -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ```

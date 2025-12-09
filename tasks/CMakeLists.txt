@@ -1,17 +1,13 @@
 add_library(tasks
-    auto_aim/armor_detector/detector_impl.cpp
+    auto_aim/armor_detector/yolo_detector.cpp
+)
 
-    # armor_detector
-    # onnxruntime
-    # auto_aim/armor_detector/onnxruntime/armor_detector_onnx.cpp
-    # tensorRT
-    # auto_aim/armor_detector/tensorrt/armor_detector_tensorrt.cpp
-)
-target_include_directories(tasks
-    PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
-)
+# ONNX Runtime
+set(ORT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/onnxruntime")
+target_include_directories(tasks PUBLIC ${ORT_ROOT}/include)
 target_link_libraries(tasks
     PUBLIC 
     aurora_vision
-    ${OpenCV_LIBS})
+    ${OpenCV_LIBS}
+    ${ORT_ROOT}/lib/libonnxruntime.so.1.18.0
+)
