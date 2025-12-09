@@ -127,6 +127,10 @@ public:
      * @param item The frame to enqueue.
      * @throws std::runtime_error if the queue is full.
      */
+
+    /**
+    有bug，测试不过，好像是死锁
+    */
     bool enqueue(const Frame& item) {
         if (drop_pred_(item)) {
             std::cerr << "OrderedQueue: Dropped frame with id: " << item.id << std::endl;
@@ -230,7 +234,8 @@ public:
         : m_high_priority_queue_(queue_capacity),
           m_normal_priority_queue_(queue_capacity),
           m_stop_(false),
-          ordered_queue_(queue_capacity, std::move(drop_pred)) {
+          m_drop_pred_(std::move(drop_pred)),
+          m_capacity_(queue_capacity) {
         if (num_threads == 0) {
             num_threads = std::thread::hardware_concurrency();
             if (num_threads == 0) {  // Fallback if hardware_concurrency unavailable
@@ -310,33 +315,83 @@ public:
         using ReturnType = typename std::invoke_result<F, Frame>::type;
         auto promise_ptr = std::make_shared<std::promise<ReturnType>>();
         std::future<ReturnType> future = promise_ptr->get_future();
-        bool accepted = false;
-        try {
-            accepted = ordered_queue_.enqueue(frame);
-        } catch (...) {
-            promise_ptr->set_exception(std::current_exception());
-            return future;
-        }
-        if (!accepted) {
+
+        bool dropped = m_drop_pred_(frame);
+        if (dropped) {
             promise_ptr->set_exception(
                 std::make_exception_ptr(std::runtime_error("Frame dropped")));
+        }
+
+        auto chain_logic = [this]() {
+            std::lock_guard<std::mutex> lock(mutex_);
+            m_next_ordered_id_++;
+            auto it = m_ordered_tasks_buffer_.find(m_next_ordered_id_);
+            if (it != m_ordered_tasks_buffer_.end()) {
+                BufferedTask& buffered = it->second;
+                Task next_task;
+                if (m_drop_pred_(buffered.frame)) {
+                    next_task = std::move(buffered.cancel);
+                } else {
+                    next_task = std::move(buffered.task);
+                }
+                m_ordered_tasks_buffer_.erase(it);
+                enqueue_task(std::move(next_task), true);
+            }
+        };
+
+        Task task;
+        if (dropped) {
+            task = Task([chain_logic]() mutable { chain_logic(); });
+        } else {
+            task = Task(
+                [promise_ptr, frame, proc = std::forward<F>(processor), chain_logic]() mutable {
+                    try {
+                        if constexpr (std::is_void_v<ReturnType>) {
+                            std::invoke(std::move(proc), frame);
+                            promise_ptr->set_value();
+                        } else {
+                            promise_ptr->set_value(std::invoke(std::move(proc), frame));
+                        }
+                    } catch (...) {
+                        promise_ptr->set_exception(std::current_exception());
+                    }
+                    chain_logic();
+                });
+        }
+
+        Task cancel([promise_ptr, chain_logic]() mutable {
+            try {
+                promise_ptr->set_exception(
+                    std::make_exception_ptr(std::runtime_error("Frame dropped")));
+            } catch (...) {
+            }
+            chain_logic();
+        });
+
+        std::lock_guard<std::mutex> lock(mutex_);
+
+        if (frame.id < m_next_ordered_id_) {
+            if (!dropped) {
+                promise_ptr->set_exception(
+                    std::make_exception_ptr(std::runtime_error("Frame dropped (outdated)")));
+            }
             return future;
         }
-        enqueue_task(
-            [this, promise_ptr, id = frame.id, proc = std::forward<F>(processor)]() mutable {
-                try {
-                    Frame f = ordered_queue_.dequeue_until(id);
-                    if constexpr (std::is_void_v<ReturnType>) {
-                        std::invoke(std::move(proc), f);
-                        promise_ptr->set_value();
-                    } else {
-                        promise_ptr->set_value(std::invoke(std::move(proc), f));
-                    }
-                } catch (...) {
-                    promise_ptr->set_exception(std::current_exception());
-                }
-            },
-            true);
+
+        if (frame.id == m_next_ordered_id_) {
+            enqueue_task(std::move(task), true);
+        } else {
+            std::cerr << "Check size: " << m_ordered_tasks_buffer_.size()
+                      << " >= " << m_capacity_ - 1 << std::endl;
+            if (m_ordered_tasks_buffer_.size() >= m_capacity_ - 1) {
+                std::cerr << "Throwing!" << std::endl;
+                promise_ptr->set_exception(
+                    std::make_exception_ptr(std::runtime_error("OrderedQueue is full")));
+                return future;
+            }
+            m_ordered_tasks_buffer_.emplace(
+                frame.id, BufferedTask{frame, std::move(task), std::move(cancel)});
+        }
         return future;
     }
 
@@ -415,5 +470,14 @@ private:
     alignas(64) std::atomic<size_t> m_pending_tasks_{0};     // Pending task counter
     std::mutex mutex_;                                       // Mutex for stop flag
     bool m_stop_;                                            // Stop flag for shutdown
-    OrderedQueue ordered_queue_;                             // Ordered queue for frame processing
+
+    struct BufferedTask {
+        Frame frame;
+        Task task;
+        Task cancel;
+    };
+    std::unordered_map<int, BufferedTask> m_ordered_tasks_buffer_;
+    int m_next_ordered_id_ = 1;
+    DropPredicate m_drop_pred_;
+    size_t m_capacity_;
 };
