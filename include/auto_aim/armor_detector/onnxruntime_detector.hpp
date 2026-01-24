@@ -1,9 +1,9 @@
 /**
  ************************************************************************
  *
- * @file yolo_detector.hpp
+ * @file onnxruntime_detector.hpp
  * @author Xlqmu
- * @brief 神经网络装甲板检测器
+ * @brief ONNX Runtime 装甲板检测器
  *
  * ************************************************************************
  * @copyright Copyright (c) 2025 Aurora Vision
@@ -23,13 +23,13 @@
 namespace armor {
 
 /**
- * @brief YOLO 检测器实现类
+ * @brief onnxruntime 检测器实现类
  * 支持直接输出装甲板 4 点坐标和类别 ID
  */
-class YoloDetector : public Detector {
+class Onnxruntime_Detector : public Detector {
 public:
-    YoloDetector();
-    ~YoloDetector() override = default;
+    Onnxruntime_Detector();
+    ~Onnxruntime_Detector() override = default;
 
     /**
      * @brief 初始化模型

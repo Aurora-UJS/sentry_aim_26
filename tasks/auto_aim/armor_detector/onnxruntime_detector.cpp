@@ -10,20 +10,20 @@
  * ************************************************************************
  */
 
-#include "auto_aim/armor_detector/yolo_detector.hpp"
+#include "auto_aim/armor_detector/onnxruntime_detector.hpp"
 
 #include <algorithm>
 #include <cmath>
 
 namespace armor {
 
-YoloDetector::YoloDetector() {
-    utils::logger()->info("[YoloDetector] 创建实例");
+Onnxruntime_Detector::Onnxruntime_Detector() {
+    utils::logger()->info("[Onnxruntime_Detector] 创建实例");
 }
 
-bool YoloDetector::init(const std::string& model_path) {
+bool Onnxruntime_Detector::init(const std::string& model_path) {
     try {
-        env_ = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "YoloDetector");
+        env_ = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Onnxruntime_Detector");
         session_options_ = std::make_unique<Ort::SessionOptions>();
 
         // 设置线程数
@@ -54,30 +54,30 @@ bool YoloDetector::init(const std::string& model_path) {
             output_names_.push_back(output_names_str_.back().c_str());
         }
 
-        utils::logger()->info("[YoloDetector] 模型加载成功: {}", model_path);
+        utils::logger()->info("[Onnxruntime_Detector] 模型加载成功: {}", model_path);
         return true;
     } catch (const Ort::Exception& e) {
-        utils::logger()->error("[YoloDetector] ONNX Runtime 错误: {}", e.what());
+        utils::logger()->error("[Onnxruntime_Detector] ONNX Runtime 错误: {}", e.what());
         return false;
     } catch (const std::exception& e) {
-        utils::logger()->error("[YoloDetector] 初始化异常: {}", e.what());
+        utils::logger()->error("[Onnxruntime_Detector] 初始化异常: {}", e.what());
         return false;
     }
 }
 
-void YoloDetector::setParams(const DetectorParams& params) {
+void Onnxruntime_Detector::setParams(const DetectorParams& params) {
     params_ = params;
     if (!params_.model_path.empty()) {
         init(params_.model_path);
     }
 }
 
-std::vector<ArmorObject> YoloDetector::detect(const cv::Mat& image) {
+std::vector<ArmorObject> Onnxruntime_Detector::detect(const cv::Mat& image) {
     if (image.empty()) {
         return {};
     }
     if (!session_) {
-        utils::logger()->error("[YoloDetector] 会话未初始化");
+        utils::logger()->error("[Onnxruntime_Detector] 会话未初始化");
         return {};
     }
 
@@ -114,7 +114,7 @@ std::vector<ArmorObject> YoloDetector::detect(const cv::Mat& image) {
         input_tensors.push_back(Ort::Value::CreateTensor<Ort::Float16_t>(
             memory_info, input_data, input_tensor_size, input_shape.data(), input_shape.size()));
     } else {
-        utils::logger()->error("[YoloDetector] 不支持的模型输入类型: {}",
+        utils::logger()->error("[Onnxruntime_Detector] 不支持的模型输入类型: {}",
                                static_cast<int>(input_tensor_type));
         return {};
     }
@@ -154,7 +154,7 @@ std::vector<ArmorObject> YoloDetector::detect(const cv::Mat& image) {
         memcpy(output_data_fp32.data(), output_mat_fp32.data, output_size * sizeof(float));
         output_data = output_data_fp32.data();
     } else {
-        utils::logger()->error("[YoloDetector] 不支持的模型输出类型: {}",
+        utils::logger()->error("[Onnxruntime_Detector] 不支持的模型输出类型: {}",
                                static_cast<int>(output_tensor_type));
         return {};
     }
@@ -181,7 +181,7 @@ std::vector<ArmorObject> YoloDetector::detect(const cv::Mat& image) {
     return armors;
 }
 
-cv::Mat YoloDetector::preProcess(const cv::Mat& image, float& scale) const {
+cv::Mat Onnxruntime_Detector::preProcess(const cv::Mat& image, float& scale) const {
     // 计算缩放比例 (保持长宽比)
     int w = image.cols;
     int h = image.rows;
@@ -208,13 +208,13 @@ cv::Mat YoloDetector::preProcess(const cv::Mat& image, float& scale) const {
     return blob;
 }
 
-std::vector<ArmorObject> YoloDetector::postProcess(
+std::vector<ArmorObject> Onnxruntime_Detector::postProcess(
     const float* data, int rows, int dimensions, float scale,
     [[maybe_unused]] const cv::Mat& origin_img) const {
     std::vector<ArmorObject> armors;
 
     if (dimensions < 22) {
-        utils::logger()->warn("[YoloDetector] 模型输出维度不足: {}", dimensions);
+        utils::logger()->warn("[Onnxruntime_Detector] 模型输出维度不足: {}", dimensions);
         return {};
     }
 
