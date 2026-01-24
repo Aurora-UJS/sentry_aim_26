@@ -1,5 +1,5 @@
 add_library(tasks
-    auto_aim/armor_detector/yolo_detector.cpp
+    auto_aim/armor_detector/onnxruntime_detector.cpp
 )
 
 # ONNX Runtime
