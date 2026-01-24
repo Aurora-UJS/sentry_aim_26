@@ -39,10 +39,9 @@ struct DetectorParams {
  * @brief 装甲板检测器抽象接口
  *
  * 实现类需要完成：
- * 1. 图像预处理（颜色通道分离、二值化）
- * 2. 灯条检测（轮廓提取、形态学筛选）
- * 3. 装甲板匹配（左右灯条配对）
- * 4. 数字识别（ONNX 模型推理，可选）
+ * 1. 装甲板四点坐标输出
+ * 2. 装甲板类别输出
+ * 3. 装甲板颜色输出
  */
 class Detector {
 public:
@@ -65,7 +64,10 @@ public:
      * @brief 获取调试图像（可选实现）
      * @return 标注了检测结果的图像
      */
-    virtual cv::Mat getDebugImage() const { return cv::Mat(); }
+    // nodiscard 表示调用者应使用返回值，避免忽略
+    [[nodiscard]] virtual cv::Mat getDebugImage() const { 
+    return {}; 
+}
 };
 
 }  // namespace armor

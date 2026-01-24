@@ -88,7 +88,7 @@ spdlog::info("Detection took {} us", duration.count());
 
 2. 串口优化：实现异步接收（参考中南大学异步设计）：
 
-``` zsh
+``` cpp
 // src/io/serial_io.cpp (部分)
 std::optional<std::future<size_t>> SerialDriverImpl::async_receive(std::span<uint8_t> buffer, int timeout_ms) {
     auto promise = std::make_shared<std::promise<size_t>>();
@@ -126,7 +126,7 @@ std::optional<std::future<size_t>> SerialDriverImpl::async_receive(std::span<uin
 - 头文件：#pragma once。
 注释：Doxygen 风格：
 
-``` zsh
+``` cpp
 /// @brief Detects armor plates in the image.
 /// @param image Input BGR image.
 /// @return Detected points or nullopt if none.
@@ -135,7 +135,7 @@ std::optional<std::vector<Eigen::Vector2d>> detect(const cv::Mat& image) overrid
 
 3. 日志：spdlog 记录关键信息：
 
-``` zsh
+``` cpp
 spdlog::info("Detected {} targets in {} us", points.size(), duration.count());
 ```
 
@@ -150,7 +150,7 @@ spdlog::info("Detected {} targets in {} us", points.size(), duration.count());
 运行测试：ninja && ./tests/test_auto_aim。
 格式化：clang-format -i **/*.cpp **/*.hpp。
 
-``` ZSH
+``` zsh
 git checkout -b feature/new_detector
 git add tasks/auto_aim/detector_impl.cpp
 git commit -m "[Detector] Add contour-based detection"
@@ -159,7 +159,9 @@ git push origin feature/new_detector
 ## 编译命令
 
 ``` zsh
-cmake -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ \ 
+rm -rf build
+cmake -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ \
       -DCMAKE_TOOLCHAIN_FILE=~/vcpkg/scripts/buildsystems/vcpkg.cmake \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+ninja -C build
 ```

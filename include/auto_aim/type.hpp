@@ -3,7 +3,6 @@
 #include <array>
 #include <chrono>
 #include <iostream>
-#include <numeric>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -136,8 +135,9 @@ inline int retypetotracker(ArmorNumber a) {
 
     std::string key = armorNumberToString(a);
     auto it = armor_map.find(key);
-    if (it != armor_map.end())
+    if (it != armor_map.end()) {
         return it->second;
+    }
 
     // 默认映射
     switch (a) {
@@ -191,8 +191,8 @@ struct ArmorObject {
     ArmorNumber number = ArmorNumber::UNKNOWN;
     ArmorType type = ArmorType::SMALL;
 
-    float prob = 0.f;        // 整体置信度
-    float class_prob = 0.f;  // 类别置信度
+    float prob = 0.F;        // 整体置信度
+    float class_prob = 0.F;  // 类别置信度
 
     // 关键点：建议存储顺序为 [左下, 左上, 右上, 右下] 以适配 PnP
     // 如果模型输出是 [左上, 左下, 右下, 右上]，请在赋值时调整顺序

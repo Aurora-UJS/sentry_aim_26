@@ -3,7 +3,7 @@
  *
  * @file yolo_detector.hpp
  * @author Xlqmu
- * @brief 基于 YOLO 的纯神经网络装甲板检测器
+ * @brief 神经网络装甲板检测器
  *
  * ************************************************************************
  * @copyright Copyright (c) 2025 Aurora Vision
