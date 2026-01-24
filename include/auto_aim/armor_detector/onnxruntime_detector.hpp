@@ -26,10 +26,10 @@ namespace armor {
  * @brief onnxruntime 检测器实现类
  * 支持直接输出装甲板 4 点坐标和类别 ID
  */
-class Onnxruntime_Detector : public Detector {
+class OnnxRuntimeDetector : public Detector {
 public:
-    Onnxruntime_Detector();
-    ~Onnxruntime_Detector() override = default;
+    OnnxRuntimeDetector();
+    ~OnnxRuntimeDetector() override = default;
 
     /**
      * @brief 初始化模型

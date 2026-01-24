@@ -10,7 +10,7 @@
  * ************************************************************************
  */
 
-#include "auto_aim/armor_detector/yolo_detector.hpp"
+#include "auto_aim/armor_detector/onnxruntime_detector.hpp"
 #include "utils/logger/logger.hpp"
 
 #include <opencv2/opencv.hpp>
@@ -18,7 +18,7 @@
 
 int main(int argc, char** argv) {
     // 初始化检测器
-    armor::YoloDetector detector;
+    armor::OnnxRuntimeDetector detector;
 
     // 配置参数
     armor::DetectorParams params;

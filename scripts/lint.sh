@@ -45,25 +45,29 @@ find_sources() {
 format_code() {
     print_info "开始检查并格式化代码..."
 
-    COUNT=0
-    TOTAL=0
+    local count=0
+    local total=0
+    # 临时关闭 set -e 以便统计
+    set +e
     while IFS= read -r -d '' file; do
-        ((TOTAL++))
-        # 只取 md5 的第一个字段（Hash值）
+        ((total++))
+        # 使用 -i 直接修改，如果文件没变，它的 mtime 不一定会大幅跳动
+        # 我们通过 clang-format 的输出判断是否发生了改变（更稳健）
         BEFORE_HASH=$(md5sum "$file" | cut -d' ' -f1)
         $CLANG_FORMAT_BIN -i "$file"
         AFTER_HASH=$(md5sum "$file" | cut -d' ' -f1)
-        
+
         if [ "$BEFORE_HASH" != "$AFTER_HASH" ]; then
             echo "  [FIXED] $file"
-            ((COUNT++))
+            ((count++))
         fi
     done < <(find_sources)
+    set -e
 
-    if [ $COUNT -eq 0 ]; then
-        print_info "✅ 所有文件 ($TOTAL 个) 均已符合格式规范，无需修改。"
+    if [ $count -eq 0 ]; then
+        print_info "✅ 所有 $total 个文件均已符合标准。"
     else
-        print_info "✅ 格式化完成，共修复了 $COUNT/$TOTAL 个文件。"
+        print_info "✅ 格式化完成，修复了 $count 个文件。"
     fi
 }
 

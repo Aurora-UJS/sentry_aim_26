@@ -17,13 +17,13 @@
 
 namespace armor {
 
-Onnxruntime_Detector::Onnxruntime_Detector() {
-    utils::logger()->info("[Onnxruntime_Detector] 创建实例");
+OnnxRuntimeDetector::OnnxRuntimeDetector() {
+    utils::logger()->info("[OnnxRuntimeDetector] 创建实例");
 }
 
-bool Onnxruntime_Detector::init(const std::string& model_path) {
+bool OnnxRuntimeDetector::init(const std::string& model_path) {
     try {
-        env_ = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "Onnxruntime_Detector");
+        env_ = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "OnnxRuntimeDetector");
         session_options_ = std::make_unique<Ort::SessionOptions>();
 
         // 设置线程数
@@ -54,30 +54,30 @@ bool Onnxruntime_Detector::init(const std::string& model_path) {
             output_names_.push_back(output_names_str_.back().c_str());
         }
 
-        utils::logger()->info("[Onnxruntime_Detector] 模型加载成功: {}", model_path);
+        utils::logger()->info("[OnnxRuntimeDetector] 模型加载成功: {}", model_path);
         return true;
     } catch (const Ort::Exception& e) {
-        utils::logger()->error("[Onnxruntime_Detector] ONNX Runtime 错误: {}", e.what());
+        utils::logger()->error("[OnnxRuntimeDetector] ONNX Runtime 错误: {}", e.what());
         return false;
     } catch (const std::exception& e) {
-        utils::logger()->error("[Onnxruntime_Detector] 初始化异常: {}", e.what());
+        utils::logger()->error("[OnnxRuntimeDetector] 初始化异常: {}", e.what());
         return false;
     }
 }
 
-void Onnxruntime_Detector::setParams(const DetectorParams& params) {
+void OnnxRuntimeDetector::setParams(const DetectorParams& params) {
     params_ = params;
     if (!params_.model_path.empty()) {
         init(params_.model_path);
     }
 }
 
-std::vector<ArmorObject> Onnxruntime_Detector::detect(const cv::Mat& image) {
+std::vector<ArmorObject> OnnxRuntimeDetector::detect(const cv::Mat& image) {
     if (image.empty()) {
         return {};
     }
     if (!session_) {
-        utils::logger()->error("[Onnxruntime_Detector] 会话未初始化");
+        utils::logger()->error("[OnnxRuntimeDetector] 会话未初始化");
         return {};
     }
 
@@ -114,7 +114,7 @@ std::vector<ArmorObject> Onnxruntime_Detector::detect(const cv::Mat& image) {
         input_tensors.push_back(Ort::Value::CreateTensor<Ort::Float16_t>(
             memory_info, input_data, input_tensor_size, input_shape.data(), input_shape.size()));
     } else {
-        utils::logger()->error("[Onnxruntime_Detector] 不支持的模型输入类型: {}",
+        utils::logger()->error("[OnnxRuntimeDetector] 不支持的模型输入类型: {}",
                                static_cast<int>(input_tensor_type));
         return {};
     }
@@ -154,7 +154,7 @@ std::vector<ArmorObject> Onnxruntime_Detector::detect(const cv::Mat& image) {
         memcpy(output_data_fp32.data(), output_mat_fp32.data, output_size * sizeof(float));
         output_data = output_data_fp32.data();
     } else {
-        utils::logger()->error("[Onnxruntime_Detector] 不支持的模型输出类型: {}",
+        utils::logger()->error("[OnnxRuntimeDetector] 不支持的模型输出类型: {}",
                                static_cast<int>(output_tensor_type));
         return {};
     }
@@ -181,7 +181,7 @@ std::vector<ArmorObject> Onnxruntime_Detector::detect(const cv::Mat& image) {
     return armors;
 }
 
-cv::Mat Onnxruntime_Detector::preProcess(const cv::Mat& image, float& scale) const {
+cv::Mat OnnxRuntimeDetector::preProcess(const cv::Mat& image, float& scale) const {
     // 计算缩放比例 (保持长宽比)
     int w = image.cols;
     int h = image.rows;
@@ -208,13 +208,13 @@ cv::Mat Onnxruntime_Detector::preProcess(const cv::Mat& image, float& scale) con
     return blob;
 }
 
-std::vector<ArmorObject> Onnxruntime_Detector::postProcess(
+std::vector<ArmorObject> OnnxRuntimeDetector::postProcess(
     const float* data, int rows, int dimensions, float scale,
     [[maybe_unused]] const cv::Mat& origin_img) const {
     std::vector<ArmorObject> armors;
 
     if (dimensions < 22) {
-        utils::logger()->warn("[Onnxruntime_Detector] 模型输出维度不足: {}", dimensions);
+        utils::logger()->warn("[OnnxRuntimeDetector] 模型输出维度不足: {}", dimensions);
         return {};
     }
 
@@ -349,7 +349,8 @@ std::vector<ArmorObject> Onnxruntime_Detector::postProcess(
     std::vector<int> indices;
     cv::dnn::NMSBoxes(boxes, confidences, params_.conf_threshold, params_.nms_threshold, indices);
 
-    utils::logger()->debug("[YoloDetector] NMS 前: {}, NMS 后: {}", boxes.size(), indices.size());
+    utils::logger()->debug("[OnnxRuntimeDetector] NMS 前: {}, NMS 后: {}", boxes.size(),
+                           indices.size());
 
     for (int idx : indices) {
         ArmorObject armor;
