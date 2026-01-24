@@ -43,19 +43,27 @@ find_sources() {
 
 # 格式化代码
 format_code() {
-    print_info "开始格式化代码..."
-    
+    print_info "开始检查并格式化代码..."
+
     COUNT=0
+    TOTAL=0
     while IFS= read -r -d '' file; do
+        ((TOTAL++))
+        # 只取 md5 的第一个字段（Hash值）
+        BEFORE_HASH=$(md5sum "$file" | cut -d' ' -f1)
         $CLANG_FORMAT_BIN -i "$file"
-        echo "  修复: $file"
-        ((COUNT++))
+        AFTER_HASH=$(md5sum "$file" | cut -d' ' -f1)
+        
+        if [ "$BEFORE_HASH" != "$AFTER_HASH" ]; then
+            echo "  [FIXED] $file"
+            ((COUNT++))
+        fi
     done < <(find_sources)
-    
+
     if [ $COUNT -eq 0 ]; then
-        print_warning "未找到需要格式化的文件"
+        print_info "✅ 所有文件 ($TOTAL 个) 均已符合格式规范，无需修改。"
     else
-        print_info "✅ 格式化完成，共处理 $COUNT 个文件"
+        print_info "✅ 格式化完成，共修复了 $COUNT/$TOTAL 个文件。"
     fi
 }
 

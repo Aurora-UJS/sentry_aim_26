@@ -287,8 +287,8 @@ public:
      * @return A std::future that will hold the result of the task's execution.
      */
     template <typename F, typename... Args>
-    auto submit(F&& f,
-                Args&&... args) -> std::future<typename std::invoke_result<F, Args...>::type> {
+    auto submit(F&& f, Args&&... args)
+        -> std::future<typename std::invoke_result<F, Args...>::type> {
         return submit_impl(false, std::forward<F>(f), std::forward<Args>(args)...);
     }
 
@@ -298,8 +298,8 @@ public:
      * @return A std::future for the task's result.
      */
     template <typename F, typename... Args>
-    auto submit_high(F&& f,
-                     Args&&... args) -> std::future<typename std::invoke_result<F, Args...>::type> {
+    auto submit_high(F&& f, Args&&... args)
+        -> std::future<typename std::invoke_result<F, Args...>::type> {
         return submit_impl(true, std::forward<F>(f), std::forward<Args>(args)...);
     }
 
@@ -310,8 +310,8 @@ public:
      * @return A std::future for the processing result.
      */
     template <typename F>
-    auto submit_frame(const Frame& frame,
-                      F&& processor) -> std::future<typename std::invoke_result<F, Frame>::type> {
+    auto submit_frame(const Frame& frame, F&& processor)
+        -> std::future<typename std::invoke_result<F, Frame>::type> {
         using ReturnType = typename std::invoke_result<F, Frame>::type;
         auto promise_ptr = std::make_shared<std::promise<ReturnType>>();
         std::future<ReturnType> future = promise_ptr->get_future();
@@ -407,8 +407,8 @@ private:
      * Packages the callable and arguments into a task and enqueues it.
      */
     template <typename F, typename... Args>
-    auto submit_impl(bool high_priority, F&& f,
-                     Args&&... args) -> std::future<typename std::invoke_result<F, Args...>::type> {
+    auto submit_impl(bool high_priority, F&& f, Args&&... args)
+        -> std::future<typename std::invoke_result<F, Args...>::type> {
         using ReturnType = typename std::invoke_result<F, Args...>::type;
         std::packaged_task<ReturnType()> task(
             [func = std::forward<F>(f), ... largs = std::forward<Args>(args)]() mutable {
