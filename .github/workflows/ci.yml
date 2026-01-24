@@ -48,7 +48,7 @@ jobs:
               FAILED=1
             fi
           done < <(find . -type f \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" \) \
-            -not -path "./build/*" -not -path "./vcpkg_installed/*" -print0)
+            -not -path "./build/*" -not -path "./vcpkg_installed/*" -not -path "./3rdparty/*" -print0)
           
           if [ $FAILED -eq 1 ]; then
             echo "格式检查失败，请运行: clang-format -i **/*.cpp **/*.hpp **/*.h"

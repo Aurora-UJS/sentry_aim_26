@@ -27,7 +27,8 @@ find_sources() {
         -not -path "./build/*" \
         -not -path "./vcpkg_installed/*" \
         -not -path "./.git/*" \
-        -not -path "./vcpkg/*"
+        -not -path "./vcpkg/*" \
+        -not -path "./3rdparty/*"
 }
 
 # 格式化代码
