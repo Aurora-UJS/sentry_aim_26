@@ -65,9 +65,7 @@ public:
      * @return 标注了检测结果的图像
      */
     // nodiscard 表示调用者应使用返回值，避免忽略
-    [[nodiscard]] virtual cv::Mat getDebugImage() const { 
-    return {}; 
-}
+    [[nodiscard]] virtual cv::Mat getDebugImage() const { return {}; }
 };
 
 }  // namespace armor
