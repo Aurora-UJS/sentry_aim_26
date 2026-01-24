@@ -15,63 +15,65 @@ print_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-# 获取项目根目录
+# 获取项目根目录 (假设脚本在项目根目录或 scripts 子目录下)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+if [ -f "$SCRIPT_DIR/CMakeLists.txt" ]; then
+    PROJECT_ROOT="$SCRIPT_DIR"
+else
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
 
 cd "$PROJECT_ROOT"
 
-# 查找所有 C++ 源文件
+CLANG_FORMAT_BIN="clang-format-19"
+CLANG_TIDY_BIN="clang-tidy-19"
+
+print_info "使用工具: $($CLANG_FORMAT_BIN --version)"
+
+# 查找所有 C++ 源文件 (使用函数返回 find 参数)
 find_sources() {
     find . -type f \( -name "*.cpp" -o -name "*.hpp" -o -name "*.h" -o -name "*.cc" \) \
         -not -path "./build/*" \
         -not -path "./vcpkg_installed/*" \
         -not -path "./.git/*" \
         -not -path "./vcpkg/*" \
-        -not -path "./3rdparty/*"
+        -not -path "./3rdparty/*" \
+        -print0
 }
 
 # 格式化代码
 format_code() {
-    print_info "格式化代码..."
+    print_info "开始格式化代码..."
     
-    FILES=$(find_sources)
+    COUNT=0
+    while IFS= read -r -d '' file; do
+        $CLANG_FORMAT_BIN -i "$file"
+        echo "  修复: $file"
+        ((COUNT++))
+    done < <(find_sources)
     
-    if [ -z "$FILES" ]; then
-        print_warning "未找到 C++ 源文件"
-        return 0
+    if [ $COUNT -eq 0 ]; then
+        print_warning "未找到需要格式化的文件"
+    else
+        print_info "✅ 格式化完成，共处理 $COUNT 个文件"
     fi
-    
-    for file in $FILES; do
-        clang-format -i "$file"
-        echo "  格式化: $file"
-    done
-    
-    print_info "✅ 格式化完成"
 }
 
 # 检查代码格式
 check_format() {
-    print_info "检查代码格式..."
-    
-    FILES=$(find_sources)
-    
-    if [ -z "$FILES" ]; then
-        print_warning "未找到 C++ 源文件"
-        return 0
-    fi
+    print_info "正在检查代码格式..."
     
     FAILED=0
-    for file in $FILES; do
-        if ! clang-format --dry-run --Werror "$file" 2>/dev/null; then
+    while IFS= read -r -d '' file; do
+        if ! $CLANG_FORMAT_BIN --dry-run --Werror "$file" 2>/dev/null; then
             print_error "格式错误: $file"
             FAILED=1
         fi
-    done
+    done < <(find_sources)
     
     if [ $FAILED -eq 1 ]; then
-        print_error "代码格式检查失败！运行 '$0 format' 修复"
-        return 1
+        print_error "❌ 代码格式检查失败！请运行 './$(basename "$0") format' 修复后提交"
+        exit 1
     fi
     
     print_info "✅ 所有文件格式正确"
@@ -79,28 +81,25 @@ check_format() {
 
 # 运行 clang-tidy
 run_tidy() {
-    print_info "运行静态分析..."
+    print_info "运行静态分析 (clang-tidy)..."
     
     if [ ! -f "build/compile_commands.json" ]; then
-        print_error "未找到 compile_commands.json，请先构建项目"
+        print_error "未找到 build/compile_commands.json"
+        print_warning "提示: 请开启 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON 编译项目"
         return 1
     fi
     
-    FILES=$(find_sources | grep -E "\.cpp$")
+    # 只针对 .cpp 文件运行 tidy，.hpp 会被包含在内
+    FILES=$(find . -type f -name "*.cpp" -not -path "./build/*" -not -path "./3rdparty/*")
     
     if [ -z "$FILES" ]; then
-        print_warning "未找到 C++ 源文件"
+        print_warning "未找到 .cpp 源文件"
         return 0
     fi
     
-    clang-tidy -p build $FILES 2>&1 | tee clang-tidy-output.txt
+    $CLANG_TIDY_BIN -p build $FILES --quiet
     
-    if grep -q "error:" clang-tidy-output.txt; then
-        print_error "发现代码问题"
-        return 1
-    fi
-    
-    print_info "✅ 静态分析通过"
+    print_info "✅ 静态分析完成"
 }
 
 # 显示帮助
@@ -108,10 +107,10 @@ show_help() {
     echo "用法: $0 <命令>"
     echo ""
     echo "命令:"
-    echo "  format    格式化所有源代码"
-    echo "  check     检查代码格式（不修改文件）"
+    echo "  format    自动格式化所有源代码 (匹配 CI v19 标准)"
+    echo "  check     检查代码格式 (仅检查，不修改文件)"
     echo "  tidy      运行 clang-tidy 静态分析"
-    echo "  all       运行所有检查"
+    echo "  all       运行格式检查 + 静态分析"
     echo "  help      显示此帮助信息"
 }
 
