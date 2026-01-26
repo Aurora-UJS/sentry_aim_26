@@ -32,7 +32,7 @@ find_package(Ceres REQUIRED)
 # Core library
 add_library(aurora_vision
     src/utils/logger/logger.cpp
-
+    # tasks/auto_aim/pnp_solver_impl.cpp # Uncomment when implemented
     # src/core/auto_aim.cpp # Uncomment when implemented
     # src/io/serial_io.cpp  # Uncomment when implemented
 )
@@ -69,6 +69,13 @@ add_executable(test_aurora_vision
     # tests/auto_aim_test.cpp  # Uncomment when implemented
 )
 target_link_libraries(test_aurora_vision PRIVATE aurora_vision Catch2::Catch2WithMain)
+
+# PnP Solver Test
+add_executable(pnp_test
+    tests/pnp_test.cpp
+)
+# 链接核心库和测试框架 Catch2
+target_link_libraries(pnp_test PRIVATE aurora_vision Catch2::Catch2WithMain)
 
 # Subdirectories
 add_subdirectory(src/utils)
