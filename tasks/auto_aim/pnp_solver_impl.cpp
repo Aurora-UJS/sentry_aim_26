@@ -1,5 +1,5 @@
 #include "auto_aim/pnp_solver.hpp"
-#include <yaml-cpp/yaml.h>
+#include "io/camera.hpp"
 #include <iostream>
 
 namespace armor {
@@ -48,19 +48,24 @@ bool PnpSolver::solve(const ArmorObject& obj, Armor& result) {
     bool success = cv::solvePnP(object_points, image_points, camera_matrix_, dist_coeffs_, 
                                 rvec, tvec, false, cv::SOLVEPNP_IPPE);
 
-    if (success) {
-        // 4. 将解算结果填入结果结构体
-        result.pose.x = tvec.at<double>(0);
-        result.pose.y = tvec.at<double>(1);
-        result.pose.z = tvec.at<double>(2); // 这就是目标的距离
-        
-        // 计算距离（欧几里得距离）
-        result.distance = std::sqrt(std::pow(result.pose.x, 2) + 
-                                   std::pow(result.pose.y, 2) + 
-                                   std::pow(result.pose.z, 2));
+    if (cv::solvePnP(object_points, obj.pts, camera_matrix_, dist_coeffs_, rvec, tvec)) {
+    // 1. 适配 Eigen::Vector3d pos
+    // 注意：tvec 出来的通常是 double，直接赋值给 Eigen 向量
+        result.pos.x() = tvec.at<double>(0);
+        result.pos.y() = tvec.at<double>(1);
+        result.pos.z() = tvec.at<double>(2);
+
+    // 2. 这里的 distance 成员在 Armor 中不存在，我们直接计算并打印，或者赋值给 distance_to_image_center（如果是业务需要）
+    // 根据你的 type.hpp，Armor 没有 distance 成员
+    // 如果你只是想记录距离，可以使用 Eigen 自带的 norm() 函数
+        double dist = result.pos.norm(); 
+    
+    // 3. 填充 Armor 结构体中的其他必要字段
+        result.is_ok = true;
+    
+        return true;
     }
 
-    return success;
-}
 
+    }
 } // namespace armor

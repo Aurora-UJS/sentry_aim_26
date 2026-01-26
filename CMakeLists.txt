@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.22.1)
 project(aurora_vision LANGUAGES CXX)
 
 # Set C++ standard
@@ -62,21 +62,28 @@ target_link_libraries(aurora_vision
 )
 
 # Test executable
-add_executable(test_aurora_vision
-    tests/logger_module_test.cpp
-    # tests/detector_test.cpp  # Uncomment when implemented
-    # tests/serial_test.cpp    # Uncomment when implemented
-    # tests/auto_aim_test.cpp  # Uncomment when implemented
-)
-target_link_libraries(test_aurora_vision PRIVATE aurora_vision Catch2::Catch2WithMain)
-
-# PnP Solver Test
+find_package(OpenCV REQUIRED)
 add_executable(pnp_test
     tests/pnp_test.cpp
+    tasks/auto_aim/pnp_solver_impl.cpp
 )
-# 链接核心库和测试框架 Catch2
-target_link_libraries(pnp_test PRIVATE aurora_vision Catch2::Catch2WithMain)
+target_link_libraries(pnp_test 
+    PRIVATE 
+        aurora_vision 
+        ${OpenCV_LIBS}   # OpenCV 库
+        yaml-cpp         # 配置文件库
+        Eigen3::Eigen    # 矩阵运算库
+        Catch2::Catch2WithMain
+)
+target_include_directories(pnp_test PRIVATE ${OpenCV_INCLUDE_DIRS})
 
+target_include_directories(pnp_test 
+    PRIVATE 
+        ${CMAKE_CURRENT_SOURCE_DIR}/include  # 必须包含这个，才能找到 auto_aim/xxx.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src      # 有些内部头文件可能在 src
+        ${OpenCV_INCLUDE_DIRS}
+        ${EIGEN3_INCLUDE_DIR}
+)
 # Subdirectories
 add_subdirectory(src/utils)
 add_subdirectory(tasks)

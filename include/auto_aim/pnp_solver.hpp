@@ -5,7 +5,7 @@
 #include <vector>
 
 // 引用定义的装甲板数据结构
-#include "auto_aim/armor.hpp"
+#include "auto_aim/type.hpp"
 
 namespace armor {
 
