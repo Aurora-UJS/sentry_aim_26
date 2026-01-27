@@ -73,9 +73,10 @@ concept UpdateRFunctor =
  */
 template <int N_X, int N_Z, class PredictFunc, class MeasureFunc, double Alpha = 1e-3,
           double Beta = 2.0, double Kappa = 0.0>
-requires PredictFunctor<PredictFunc, Eigen::Matrix<double, N_X, 1>,
-                        Eigen::Matrix<double, N_X, 1>> &&
-    MeasureFunctor<MeasureFunc, Eigen::Matrix<double, N_X, 1>, Eigen::Matrix<double, N_Z, 1>>
+    requires PredictFunctor<PredictFunc, Eigen::Matrix<double, N_X, 1>,
+                            Eigen::Matrix<double, N_X, 1>> &&
+             MeasureFunctor<MeasureFunc, Eigen::Matrix<double, N_X, 1>,
+                            Eigen::Matrix<double, N_Z, 1>>
 class UnscentedKalmanFilter {
 public:
     static constexpr int SigmaPoints = 2 * N_X + 1;
@@ -311,8 +312,7 @@ private:
             w[i] = 1.0 / (2 * (N_X + lambda_));
         }
         return w;
-    }
-    ();
+    }();
 
     const std::array<double, SigmaPoints> weights_cov = []() constexpr {
         std::array<double, SigmaPoints> w{};
@@ -321,8 +321,7 @@ private:
             w[i] = 1.0 / (2 * (N_X + lambda_));
         }
         return w;
-    }
-    ();
+    }();
 
     PredictFunc f;         ///< Process model function
     MeasureFunc h;         ///< Measurement model function
