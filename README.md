@@ -2,7 +2,7 @@
 
 ## tool chain
 
-clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git
+clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git + clang-format-19
 
 代码cpp标准采用c++20
 
