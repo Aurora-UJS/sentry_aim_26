@@ -36,11 +36,11 @@ concept MatrixType = std::same_as<T, Eigen::Matrix<double, Eigen::Dynamic, Eigen
 // Concepts for functors
 template <typename F, typename StateType>
 concept PredictFunctor = std::invocable<F, StateType*, StateType*> &&
-                         std::same_as<StateType, Eigen::Matrix<double, Eigen::Dynamic, 1>>;
+    std::same_as<StateType, Eigen::Matrix<double, Eigen::Dynamic, 1>>;
 
 template <typename F, typename StateType, typename MeasureType>
 concept MeasureFunctor = std::invocable<F, StateType*, MeasureType*> &&
-                         std::same_as<StateType, Eigen::Matrix<double, Eigen::Dynamic, 1>>;
+    std::same_as<StateType, Eigen::Matrix<double, Eigen::Dynamic, 1>>;
 
 template <typename F, typename CovType>
 concept UpdateQFunctor = std::invocable<F> && std::same_as<std::invoke_result_t<F>, CovType>;
@@ -65,9 +65,8 @@ concept UpdateRFunctor =
  * @tparam SmallNoise   Small noise term for numerical stability (default 1e-6).
  */
 template <int N_X, int N_Z, class PredicFunc, class MeasureFunc, double SmallNoise = 1e-6>
-    requires PredictFunctor<PredicFunc, Eigen::Matrix<double, N_X, 1>> &&
-             MeasureFunctor<MeasureFunc, Eigen::Matrix<double, N_X, 1>,
-                            Eigen::Matrix<double, N_Z, 1>>
+requires PredictFunctor<PredicFunc, Eigen::Matrix<double, N_X, 1>> &&
+    MeasureFunctor<MeasureFunc, Eigen::Matrix<double, N_X, 1>, Eigen::Matrix<double, N_Z, 1>>
 class ExtendedKalmanFilter {
 public:
     using MatrixXX = Eigen::Matrix<double, N_X, N_X>;

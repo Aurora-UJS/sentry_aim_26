@@ -1,8 +1,9 @@
 #pragma once
 
-#include <opencv2/opencv.hpp>
 #include <string>
 #include <vector>
+
+#include <opencv2/opencv.hpp>
 
 // 引用定义的装甲板数据结构
 #include "auto_aim/type.hpp"
@@ -18,12 +19,12 @@ public:
     bool solve(const ArmorObject& obj, Armor& result);
 
 private:
-    cv::Mat camera_matrix_;    // 相机内参矩阵
-    cv::Mat dist_coeffs_;      // 畸变系数矩阵
+    cv::Mat camera_matrix_;  // 相机内参矩阵
+    cv::Mat dist_coeffs_;    // 畸变系数矩阵
 
     // 存储大小装甲板的 3D 物理模型点
     std::vector<cv::Point3f> small_armor_points_;
     std::vector<cv::Point3f> large_armor_points_;
 };
 
-} // namespace armor
+}  // namespace armor

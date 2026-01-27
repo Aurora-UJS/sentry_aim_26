@@ -37,24 +37,6 @@ SortIncludes: CaseSensitive
 
 # 大括号风格
 BreakBeforeBraces: Attach
-BraceWrapping:
-  AfterCaseLabel: false
-  AfterClass: false
-  AfterControlStatement: Never
-  AfterEnum: false
-  AfterFunction: false
-  AfterNamespace: false
-  AfterStruct: false
-  AfterUnion: false
-  AfterExternBlock: false
-  BeforeCatch: false
-  BeforeElse: false
-  BeforeLambdaBody: false
-  BeforeWhile: false
-  IndentBraces: false
-  SplitEmptyFunction: false
-  SplitEmptyRecord: false
-  SplitEmptyNamespace: false
 
 # 命名空间
 NamespaceIndentation: None
@@ -91,7 +73,7 @@ AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: Yes
 BreakBeforeBinaryOperators: None
-BreakBeforeConceptDeclarations: Always
+
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
@@ -150,7 +132,7 @@ IndentExternBlock: NoIndent
 IndentGotoLabels: false
 IndentPPDirectives: None
 IndentWrappedFunctionNames: false
-InsertBraces: false
+
 InsertTrailingCommas: None
 KeepEmptyLinesAtTheStartOfBlocks: false
 MaxEmptyLinesToKeep: 1
@@ -167,6 +149,6 @@ PenaltyIndentedWhitespace: 0
 PenaltyReturnTypeOnItsOwnLine: 200
 QualifierAlignment: Leave
 ReflowComments: true
-RemoveBracesLLVM: false
+
 SeparateDefinitionBlocks: Leave
 SortUsingDeclarations: true
