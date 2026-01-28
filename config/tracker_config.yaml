@@ -1,0 +1,35 @@
+# 装甲板跟踪器配置
+
+armor_tracker:
+  # 滤波器类型: ekf, ukf, aekf, esekf
+  filter_type: "ekf"
+  
+  # 数据关联参数
+  max_match_distance: 0.5        # 最大匹配距离（米）
+  max_match_yaw_diff: 1.0        # 最大匹配yaw角差（弧度，约57度）
+  lost_time_threshold: 5         # 丢失多少帧后删除跟踪器
+  tracking_threshold: 3          # 连续跟踪多少帧后视为稳定
+  
+  # 过程噪声（Q矩阵对角元素）
+  position_noise: 0.1            # 位置过程噪声标准差（米）
+  velocity_noise: 1.0            # 速度过程噪声标准差（米/秒）
+  yaw_noise: 0.1                 # yaw角过程噪声标准差（弧度）
+  yaw_velocity_noise: 0.5        # yaw角速度过程噪声标准差（弧度/秒）
+  
+  # 测量噪声（R矩阵对角元素）
+  measurement_position_noise: 0.05   # 位置测量噪声标准差（米）
+  measurement_yaw_noise: 0.1         # yaw角测量噪声标准差（弧度）
+  
+  # 预测参数
+  bullet_speed: 28.0             # 子弹速度（米/秒）
+
+# 装甲板类型映射（用于多目标跟踪）
+armor_map:
+  SENTRY: 0
+  NO1: 1
+  NO2: 2
+  NO3: 3
+  NO4: 4
+  NO5: 5
+  OUTPOST: 6
+  BASE: 7

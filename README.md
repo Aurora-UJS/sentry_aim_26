@@ -60,11 +60,11 @@ clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git + c
 
 #### 3.2.1 实验（Playground）
 
-在 tasks/auto_aim/playground/ 中尝试新算法，验证思路，避免直接修改核心代码。
+通过新建git branch尝试开发新算法，验证思路，避免直接修改核心代码。
 
 #### 3.2.2 实现（接口实现）
 
-验证实验有效后，实现接口，迁移到 tasks/auto_aim/。
+验证实验有效后，实现接口，迁移到如 tasks/auto_aim/。
 
 #### 3.2.3 测试
 
@@ -78,7 +78,7 @@ clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git + c
 
 1. 性能：使用 std::chrono 测量模块耗时：
 
-``` zsh
+``` cpp
 auto start = std::chrono::high_resolution_clock::now();
 auto result = detector_->detect(image);
 auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -165,3 +165,57 @@ cmake -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ninja -C build
 ```
+
+关于模型
+
+直接采用szu的基于yolov5魔改的网络
+
+1. 模型输入 (Input)格式：NCHW (Batch, Channels, Height, Width)。尺寸：$640 \times 640$（由 params_.input_size 定义）。
+
+    预处理：缩放：采用 letterbox 方式（保持长宽比，缺失部分补黑边）。
+
+    归一化：像素值从 [0, 255] 缩放到 [0, 1]。
+    
+    类型：支持 FP32 或 FP16。
+
+2. 模型输出 (Output) —— 22 维向量拆解对于每一个检测到的候选框，其对应的 22 维数据定义如下：
+
+    | 索引 (Index) | 含义 |处理方式 |
+    |:---:|:---:|:---:|
+    | 0, 1 | 第 1 个关键点 | $(x_1, y_1)$直接除以 scale 还原到原图| 
+    |2, 3|第 2 个关键点| $(x_2, y_2)$直接除以 scale 还原到原图|
+    |4, 5|第 3 个关键点| $(x_3, y_3)$直接除以 scale 还原到原图|
+    |6, 7|第 4 个关键点| $(x_4, y_4)$直接除以 scale 还原到原图|
+    |8|Objectness (置信度)|通过 Sigmoid 函数激活|
+    |9 - 12|颜色分类 (4 类)|通过 Softmax 归一化|
+    |13 - 21|数字/类型分类 (9 类)|通过 Softmax 归一化|
+
+A. 颜色映射 (Index 9-12)代码中定义的映射逻辑如下：
+
+    0: 蓝色 (BLUE)
+
+    1: 红色 (RED)
+
+    2: 灰色/无 (NONE)
+
+    3: 紫色 (PURPLE)
+
+B. 数字/类型映射 (Index 13-21)代码中定义的映射逻辑如下：
+
+    0: 哨兵 (Sentry)
+
+    1: 1 号 (Hero)
+
+    2: 2 号 (Engineer)
+
+    3: 3 号 (Infantry)
+
+    4: 4 号 (Infantry)
+
+    5: 5 号 (Infantry)
+
+    6: 前哨站 (Outpost)
+
+    7: 基地小装甲 (Base Small)
+
+    8: 基地大装甲 (Base Big)
