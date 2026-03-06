@@ -40,7 +40,7 @@ std::vector<cv::Point2f> generateSyntheticImagePoints(const std::vector<cv::Poin
 }
 
 TEST_CASE("PnpSolver初始化测试", "[solver]") {
-    const std::string test_config = "/home/neomelt/sentry_aim_26/config/camera_info.yaml";
+    const std::string test_config = "config/camera_info.yaml";
 
     SECTION("使用有效的配置文件初始化") {
         REQUIRE_NOTHROW(armor::PnpSolver(test_config));
@@ -53,7 +53,7 @@ TEST_CASE("PnpSolver初始化测试", "[solver]") {
 }
 
 TEST_CASE("PnP求解 - 小装甲板", "[solver]") {
-    const std::string test_config = "/home/neomelt/sentry_aim_26/config/camera_info.yaml";
+    const std::string test_config = "config/camera_info.yaml";
     armor::PnpSolver solver(test_config);
 
     SECTION("正面小装甲板 - 距离1米") {
@@ -135,7 +135,7 @@ TEST_CASE("PnP求解 - 小装甲板", "[solver]") {
 }
 
 TEST_CASE("PnP求解 - 大装甲板", "[solver]") {
-    const std::string test_config = "/home/neomelt/sentry_aim_26/config/camera_info.yaml";
+    const std::string test_config = "config/camera_info.yaml";
     armor::PnpSolver solver(test_config);
 
     SECTION("正面大装甲板 - 距离3米") {
@@ -168,7 +168,7 @@ TEST_CASE("PnP求解 - 大装甲板", "[solver]") {
 }
 
 TEST_CASE("PnP求解 - 异常情况", "[solver]") {
-    const std::string test_config = "/home/neomelt/sentry_aim_26/config/camera_info.yaml";
+    const std::string test_config = "config/camera_info.yaml";
     armor::PnpSolver solver(test_config);
 
     SECTION("关键点数量不足") {
@@ -191,7 +191,7 @@ TEST_CASE("PnP求解 - 异常情况", "[solver]") {
 }
 
 TEST_CASE("PnP求解 - 姿态测试", "[solver]") {
-    const std::string test_config = "/home/neomelt/sentry_aim_26/config/camera_info.yaml";
+    const std::string test_config = "config/camera_info.yaml";
     armor::PnpSolver solver(test_config);
 
     SECTION("装甲板有旋转") {
