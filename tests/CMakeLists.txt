@@ -102,11 +102,18 @@ target_link_libraries(auto_aim_pipeline_test
         yaml-cpp
 )
 
-# Enable ctest
-enable_testing()
+# Register only non-interactive tests in CTest.
+# Visual/integration programs are built but not auto-executed.
 add_test(NAME logger_module_test COMMAND logger_module_test)
 add_test(NAME thread_pool_test COMMAND thread_pool_test)
-add_test(NAME armor_detector_test COMMAND armor_detector_test)
-add_test(NAME armor_solver_test COMMAND armor_solver_test)
 add_test(NAME pnp_solver_unit_test COMMAND pnp_solver_unit_test)
 add_test(NAME filter_test COMMAND filter_test)
+
+# Keep a stable runtime location for tests that read project-relative paths.
+set_tests_properties(
+    logger_module_test
+    thread_pool_test
+    pnp_solver_unit_test
+    filter_test
+    PROPERTIES WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+)
