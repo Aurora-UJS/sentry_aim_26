@@ -13,6 +13,7 @@ clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git + c
 1. 接口驱动：所有功能实现必须继承 include/ 中的抽象类（如 Detector、PnpSolver）。
 2. 模块化：将功能分为检测、PNP、跟踪、串口，分别实现，存放在 tasks/auto_aim/ 或 src/io/。
 3. 配置驱动：参数（如检测阈值、串口波特率）通过 yaml/toml 文件（configs/）加载。
+   - 检测器后端支持通过 `config/detector_config.yaml` 的 `armor_detector.backend` 切换：`onnxruntime` / `openvino` / `tensorrt` / `ncnn` / `auto`。
 4. 调试友好：使用 spdlog 记录日志，OpenCV 可视化结果，Catch2 编写单元测试。
 5. 版本控制：即使独自开发，使用 git 提交到分支（如 feature/detector），便于回滚和记录。
 
@@ -165,6 +166,21 @@ cmake -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ninja -C build
 ```
+
+## 推理后端切换
+
+在 `config/detector_config.yaml` 中修改：
+
+```yaml
+armor_detector:
+  backend: "openvino"   # onnxruntime | openvino | tensorrt | ncnn | auto
+```
+
+说明：
+- `onnxruntime`：稳定默认后端。
+- `openvino`：编译时启用 `USE_OPENVINO=ON` 且系统可找到 OpenVINO 时生效。
+- `tensorrt` / `ncnn`：当前版本已开放配置入口；若未集成对应后端实现，将自动回退到 `onnxruntime` 并输出日志提示。
+- `auto`：优先 OpenVINO（可用时），否则回退 OnnxRuntime。
 
 关于模型
 

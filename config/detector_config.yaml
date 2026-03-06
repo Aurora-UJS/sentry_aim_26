@@ -1,0 +1,27 @@
+# 装甲板检测器配置
+
+armor_detector:
+  # 推理后端: "onnxruntime", "openvino", "tensorrt", "ncnn", "auto"
+  # 当前版本中 tensorrt/ncnn 先回退到 onnxruntime（保留配置接口）
+  backend: "openvino"
+  
+  # 模型路径
+  model_path: "models/0526.onnx"
+  
+  # 推理设备配置
+  device:
+    # OnnxRuntime: "CPU", "CUDA", "MIGraphX" (AMD GPU)
+    # OpenVINO: "CPU", "GPU", "NPU", "AUTO"
+    onnxruntime: "CPU"
+    openvino: "AUTO"
+  
+  # 模型参数
+  input_width: 640
+  input_height: 640
+  
+  # 检测参数
+  conf_threshold: 0.5       # 置信度阈值
+  nms_threshold: 0.45       # NMS 阈值
+  
+  # 调试
+  enable_debug: true
