@@ -17,6 +17,12 @@
 #ifdef HAVE_OPENVINO
 #include "openvino_detector.hpp"
 #endif
+#ifdef HAVE_NCNN
+#include "ncnn_detector.hpp"
+#endif
+#ifdef HAVE_TENSORRT
+#include "tensorrt_detector.hpp"
+#endif
 
 #include "utils/logger/logger.hpp"
 
@@ -176,8 +182,25 @@ public:
             }
 
             case InferenceBackend::TENSORRT: {
+#ifdef HAVE_TENSORRT
+                auto trt_detector = std::make_unique<TensorRTDetector>();
+                if (trt_detector->init(config.model_path, "GPU")) {
+                    trt_detector->setParams(config.params);
+                    detector = std::move(trt_detector);
+                    utils::logger()->info("[DetectorFactory] 创建 TensorRT 检测器");
+                } else {
+                    utils::logger()->error(
+                        "[DetectorFactory] TensorRT 初始化失败，回退 OnnxRuntime");
+                    auto ort_detector = std::make_unique<OnnxRuntimeDetector>();
+                    if (ort_detector->init(config.model_path)) {
+                        ort_detector->setParams(config.params);
+                        detector = std::move(ort_detector);
+                    }
+                }
+#else
                 utils::logger()->warn(
-                    "[DetectorFactory] TensorRT 后端暂未编译集成，回退到 OnnxRuntime");
+                    "[DetectorFactory] TensorRT 后端未启用（USE_TENSORRT=OFF），回退到 "
+                    "OnnxRuntime");
                 auto ort_detector = std::make_unique<OnnxRuntimeDetector>();
                 if (ort_detector->init(config.model_path)) {
                     ort_detector->setParams(config.params);
@@ -187,12 +210,28 @@ public:
                 } else {
                     utils::logger()->error("[DetectorFactory] OnnxRuntime 初始化失败");
                 }
+#endif
                 break;
             }
 
             case InferenceBackend::NCNN: {
+#ifdef HAVE_NCNN
+                auto ncnn_detector = std::make_unique<NCNNDetector>();
+                if (ncnn_detector->init(config.model_path, "CPU")) {
+                    ncnn_detector->setParams(config.params);
+                    detector = std::move(ncnn_detector);
+                    utils::logger()->info("[DetectorFactory] 创建 NCNN 检测器");
+                } else {
+                    utils::logger()->error("[DetectorFactory] NCNN 初始化失败，回退 OnnxRuntime");
+                    auto ort_detector = std::make_unique<OnnxRuntimeDetector>();
+                    if (ort_detector->init(config.model_path)) {
+                        ort_detector->setParams(config.params);
+                        detector = std::move(ort_detector);
+                    }
+                }
+#else
                 utils::logger()->warn(
-                    "[DetectorFactory] NCNN 后端暂未编译集成，回退到 OnnxRuntime");
+                    "[DetectorFactory] NCNN 后端未启用（USE_NCNN=OFF），回退到 OnnxRuntime");
                 auto ort_detector = std::make_unique<OnnxRuntimeDetector>();
                 if (ort_detector->init(config.model_path)) {
                     ort_detector->setParams(config.params);
@@ -202,6 +241,7 @@ public:
                 } else {
                     utils::logger()->error("[DetectorFactory] OnnxRuntime 初始化失败");
                 }
+#endif
                 break;
             }
 

@@ -12,8 +12,12 @@ armor_detector:
   device:
     # OnnxRuntime: "CPU", "CUDA", "MIGraphX" (AMD GPU)
     # OpenVINO: "CPU", "GPU", "NPU", "AUTO"
+    # TensorRT: 当前阶段2骨架默认使用 "GPU"
+    # NCNN: 当前阶段2骨架默认使用 "CPU"
     onnxruntime: "CPU"
     openvino: "AUTO"
+    tensorrt: "GPU"
+    ncnn: "CPU"
   
   # 模型参数
   input_width: 640
