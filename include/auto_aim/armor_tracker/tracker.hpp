@@ -13,10 +13,11 @@
 #pragma once
 
 #include "auto_aim/type.hpp"
+
+#include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
-#include <chrono>
 
 namespace armor {
 
@@ -26,26 +27,26 @@ namespace armor {
 struct TrackerConfig {
     // 滤波器选择
     std::string filter_type = "ekf";  // "ekf", "ukf", "aekf", "esekf"
-    
+
     // 运动模型参数
-    double max_match_distance = 0.5;     // 最大匹配距离（米）
-    double max_match_yaw_diff = 1.0;     // 最大匹配yaw角差（弧度）
-    int lost_time_threshold = 5;         // 丢失帧数阈值
-    int tracking_threshold = 3;          // 跟踪稳定阈值
-    
+    double max_match_distance = 0.5;  // 最大匹配距离（米）
+    double max_match_yaw_diff = 1.0;  // 最大匹配yaw角差（弧度）
+    int lost_time_threshold = 5;      // 丢失帧数阈值
+    int tracking_threshold = 3;       // 跟踪稳定阈值
+
     // 过程噪声（线性平移 + 旋转）
-    double position_noise = 0.1;         // 位置过程噪声
-    double velocity_noise = 1.0;         // 速度过程噪声
-    double yaw_noise = 0.1;              // yaw角过程噪声
-    double yaw_velocity_noise = 0.5;     // yaw角速度过程噪声
-    
+    double position_noise = 0.1;      // 位置过程噪声
+    double velocity_noise = 1.0;      // 速度过程噪声
+    double yaw_noise = 0.1;           // yaw角过程噪声
+    double yaw_velocity_noise = 0.5;  // yaw角速度过程噪声
+
     // 测量噪声
     double measurement_position_noise = 0.05;  // 位置测量噪声
     double measurement_yaw_noise = 0.1;        // yaw角测量噪声
-    
+
     // 预测参数
-    double bullet_speed = 28.0;          // 子弹速度（m/s）
-    
+    double bullet_speed = 28.0;  // 子弹速度（m/s）
+
     // 加载配置文件
     static TrackerConfig fromYaml(const std::string& yaml_path);
 };
@@ -126,13 +127,13 @@ public:
 private:
     TrackerConfig config_;
     std::unique_ptr<FilterInterface> filter_;
-    
+
     // 跟踪状态
     ArmorNumber armor_number_;
     int tracking_count_ = 0;
     int lost_count_ = 0;
     std::chrono::steady_clock::time_point last_update_time_;
-    
+
     // 辅助函数
     void initFilter(const Armor& initial_armor);
     Armor stateToArmor() const;
@@ -151,8 +152,7 @@ public:
      * @param armors 检测到的装甲板列表
      * @param timestamp 当前时间戳
      */
-    void update(const std::vector<Armor>& armors, 
-                std::chrono::steady_clock::time_point timestamp);
+    void update(const std::vector<Armor>& armors, std::chrono::steady_clock::time_point timestamp);
 
     /**
      * @brief 获取最佳跟踪目标（距离图像中心最近的稳定跟踪）
@@ -169,14 +169,14 @@ private:
     TrackerConfig config_;
     std::vector<std::unique_ptr<ArmorTracker>> trackers_;
     std::chrono::steady_clock::time_point last_update_time_;
-    
+
     // 数据关联
     void matchArmorsToTrackers(const std::vector<Armor>& armors,
-                              std::vector<int>& matched_tracker_ids,
-                              std::vector<int>& matched_armor_ids);
-    
+                               std::vector<int>& matched_tracker_ids,
+                               std::vector<int>& matched_armor_ids);
+
     // 清理丢失的跟踪器
     void removeLostedTrackers();
 };
 
-} // namespace armor
+}  // namespace armor

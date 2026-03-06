@@ -13,8 +13,10 @@
 #pragma once
 
 #include "auto_aim/type.hpp"
-#include <opencv2/core.hpp>
+
 #include <string>
+
+#include <opencv2/core.hpp>
 
 namespace armor {
 
@@ -32,12 +34,12 @@ public:
     bool solve(const ArmorObject& obj, Armor& result);
 
 private:
-    cv::Mat camera_matrix_;      // 相机内参
-    cv::Mat dist_coeffs_;       // 畸变系数
+    cv::Mat camera_matrix_;  // 相机内参
+    cv::Mat dist_coeffs_;    // 畸变系数
 
     // 预定义的 3D 模型点 (单位: m)
     std::vector<cv::Point3f> small_armor_points_;
     std::vector<cv::Point3f> large_armor_points_;
 };
 
-} // namespace armor
+}  // namespace armor
