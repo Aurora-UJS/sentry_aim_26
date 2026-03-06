@@ -29,6 +29,9 @@ find_package(Catch2 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS system)
 find_package(Ceres REQUIRED)
 
+# Enable CTest at the top level so `ctest --test-dir build` can discover tests.
+include(CTest)
+
 # Core library
 add_library(aurora_vision
     src/utils/logger/logger.cpp

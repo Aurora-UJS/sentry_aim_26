@@ -282,6 +282,10 @@ public:
         return x_post;
     }
 
+    // ---- Public state access ----
+    MatrixX1 getState() const noexcept { return x_post; }
+    void setStatePost(const MatrixX1& x) noexcept { x_post = x; }
+
 private:
     PredicFunc f;          // Process model function
     MeasureFunc h;         // Measurement model function

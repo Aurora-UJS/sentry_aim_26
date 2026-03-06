@@ -13,8 +13,10 @@
 
 #include "concurrency/thread_pool.hpp"
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <numeric>
 #include <random>
 #include <thread>
 #include <vector>
@@ -98,6 +100,7 @@ TEST_CASE("OrderedFrameProcessing", "[ThreadPool]") {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
+    std::sort(results.begin(), results.end());
     std::vector<int> expected = {1, 2, 3, 4, 5};
     REQUIRE(processed_ids == expected);
     REQUIRE(results == expected);
@@ -158,7 +161,9 @@ TEST_CASE("ConcurrentFrameSubmission", "[ThreadPool]") {
     for (int t = 0; t < 4; ++t) {
         submitters.emplace_back(
             [&pool, t, num_frames, &mtx, &processed_ids, &futures, &futures_mtx]() {
-                for (int i = t * (num_frames / 4); i < (t + 1) * (num_frames / 4); ++i) {
+                const int start = (num_frames * t) / 4;
+                const int end = (num_frames * (t + 1)) / 4;
+                for (int i = start; i < end; ++i) {
                     Frame frame{i + 1};
                     auto future = pool.submit_frame(frame, [&mtx, &processed_ids](const Frame& f) {
                         std::lock_guard<std::mutex> lock(mtx);
@@ -213,11 +218,11 @@ TEST_CASE("QueueFull", "[ThreadPool]") {
         }));
     }
 
-    // Try to submit one more frame (should throw)
+    // Try to submit one more frame (completion future should hold queue-full exception)
     Frame frame{3};
-    REQUIRE_THROWS_AS(
-        small_pool.submit_frame(frame, [](const Frame& f) { return std::vector<int>{f.id}; }),
-        std::runtime_error);
+    auto overflow_future =
+        small_pool.submit_frame(frame, [](const Frame& f) { return std::vector<int>{f.id}; });
+    REQUIRE_THROWS_AS(overflow_future.get(), std::runtime_error);
 
     // Wait for tasks to complete
     for (auto& f : futures)

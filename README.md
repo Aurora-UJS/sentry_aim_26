@@ -2,7 +2,7 @@
 
 ## tool chain
 
-clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git
+clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git + clang-format-19
 
 代码cpp标准采用c++20
 
@@ -13,6 +13,7 @@ clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git
 1. 接口驱动：所有功能实现必须继承 include/ 中的抽象类（如 Detector、PnpSolver）。
 2. 模块化：将功能分为检测、PNP、跟踪、串口，分别实现，存放在 tasks/auto_aim/ 或 src/io/。
 3. 配置驱动：参数（如检测阈值、串口波特率）通过 yaml/toml 文件（configs/）加载。
+   - 检测器后端支持通过 `config/detector_config.yaml` 的 `armor_detector.backend` 切换：`onnxruntime` / `openvino` / `tensorrt` / `ncnn` / `auto`。
 4. 调试友好：使用 spdlog 记录日志，OpenCV 可视化结果，Catch2 编写单元测试。
 5. 版本控制：即使独自开发，使用 git 提交到分支（如 feature/detector），便于回滚和记录。
 
@@ -60,11 +61,11 @@ clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git
 
 #### 3.2.1 实验（Playground）
 
-在 tasks/auto_aim/playground/ 中尝试新算法，验证思路，避免直接修改核心代码。
+通过新建git branch尝试开发新算法，验证思路，避免直接修改核心代码。
 
 #### 3.2.2 实现（接口实现）
 
-验证实验有效后，实现接口，迁移到 tasks/auto_aim/。
+验证实验有效后，实现接口，迁移到如 tasks/auto_aim/。
 
 #### 3.2.3 测试
 
@@ -78,7 +79,7 @@ clang19以上（用最新） + cmake 3.28以上 + ninja 1.13.1 + vcpkg + git
 
 1. 性能：使用 std::chrono 测量模块耗时：
 
-``` zsh
+``` cpp
 auto start = std::chrono::high_resolution_clock::now();
 auto result = detector_->detect(image);
 auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
@@ -165,3 +166,72 @@ cmake -B build -G Ninja -DCMAKE_CXX_COMPILER=clang++ \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ninja -C build
 ```
+
+## 推理后端切换
+
+在 `config/detector_config.yaml` 中修改：
+
+```yaml
+armor_detector:
+  backend: "openvino"   # onnxruntime | openvino | tensorrt | ncnn | auto
+```
+
+说明：
+- `onnxruntime`：稳定默认后端。
+- `openvino`：编译时启用 `USE_OPENVINO=ON` 且系统可找到 OpenVINO 时生效。
+- `tensorrt` / `ncnn`：当前版本已开放配置入口；若未集成对应后端实现，将自动回退到 `onnxruntime` 并输出日志提示。
+- `auto`：优先 OpenVINO（可用时），否则回退 OnnxRuntime。
+
+关于模型
+
+直接采用szu的基于yolov5魔改的网络
+
+1. 模型输入 (Input)格式：NCHW (Batch, Channels, Height, Width)。尺寸：$640 \times 640$（由 params_.input_size 定义）。
+
+    预处理：缩放：采用 letterbox 方式（保持长宽比，缺失部分补黑边）。
+
+    归一化：像素值从 [0, 255] 缩放到 [0, 1]。
+    
+    类型：支持 FP32 或 FP16。
+
+2. 模型输出 (Output) —— 22 维向量拆解对于每一个检测到的候选框，其对应的 22 维数据定义如下：
+
+    | 索引 (Index) | 含义 |处理方式 |
+    |:---:|:---:|:---:|
+    | 0, 1 | 第 1 个关键点 | $(x_1, y_1)$直接除以 scale 还原到原图| 
+    |2, 3|第 2 个关键点| $(x_2, y_2)$直接除以 scale 还原到原图|
+    |4, 5|第 3 个关键点| $(x_3, y_3)$直接除以 scale 还原到原图|
+    |6, 7|第 4 个关键点| $(x_4, y_4)$直接除以 scale 还原到原图|
+    |8|Objectness (置信度)|通过 Sigmoid 函数激活|
+    |9 - 12|颜色分类 (4 类)|通过 Softmax 归一化|
+    |13 - 21|数字/类型分类 (9 类)|通过 Softmax 归一化|
+
+A. 颜色映射 (Index 9-12)代码中定义的映射逻辑如下：
+
+    0: 蓝色 (BLUE)
+
+    1: 红色 (RED)
+
+    2: 灰色/无 (NONE)
+
+    3: 紫色 (PURPLE)
+
+B. 数字/类型映射 (Index 13-21)代码中定义的映射逻辑如下：
+
+    0: 哨兵 (Sentry)
+
+    1: 1 号 (Hero)
+
+    2: 2 号 (Engineer)
+
+    3: 3 号 (Infantry)
+
+    4: 4 号 (Infantry)
+
+    5: 5 号 (Infantry)
+
+    6: 前哨站 (Outpost)
+
+    7: 基地小装甲 (Base Small)
+
+    8: 基地大装甲 (Base Big)

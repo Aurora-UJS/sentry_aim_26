@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
     utils::logger()->info("[Test] YOLO 装甲板检测器测试开始");
 
     // 测试视频路径
-    std::string video_path = "video/test.mp4";
+    std::string video_path = "video/blue/v3.avi";
     if (argc > 1) {
         video_path = argv[1];
     }
