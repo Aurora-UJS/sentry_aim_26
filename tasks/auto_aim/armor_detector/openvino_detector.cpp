@@ -20,12 +20,13 @@ namespace armor {
 
 OpenVINODetector::OpenVINODetector() {
     utils::logger()->info("[OpenVINODetector] 创建实例");
-    
+
     // 打印可用设备
     auto devices = core_.get_available_devices();
     std::string dev_list;
     for (const auto& dev : devices) {
-        if (!dev_list.empty()) dev_list += ", ";
+        if (!dev_list.empty())
+            dev_list += ", ";
         dev_list += dev;
     }
     utils::logger()->info("[OpenVINODetector] 可用设备: {}", dev_list);
@@ -34,45 +35,44 @@ OpenVINODetector::OpenVINODetector() {
 bool OpenVINODetector::init(const std::string& model_path, const std::string& device) {
     try {
         device_ = device;
-        
+
         // 读取模型
         utils::logger()->info("[OpenVINODetector] 正在加载模型: {}", model_path);
         model_ = core_.read_model(model_path);
-        
+
         // 获取输入输出信息
         auto inputs = model_->inputs();
         auto outputs = model_->outputs();
-        
+
         if (inputs.empty() || outputs.empty()) {
             utils::logger()->error("[OpenVINODetector] 模型输入/输出为空");
             return false;
         }
-        
+
         input_name_ = inputs[0].get_any_name();
         output_name_ = outputs[0].get_any_name();
         input_shape_ = inputs[0].get_shape();
-        
-        utils::logger()->info("[OpenVINODetector] 输入名: {}, 输出名: {}", input_name_, output_name_);
-        utils::logger()->info("[OpenVINODetector] 输入形状: [{}, {}, {}, {}]", 
-                              input_shape_[0], input_shape_[1], input_shape_[2], input_shape_[3]);
-        
+
+        utils::logger()->info("[OpenVINODetector] 输入名: {}, 输出名: {}", input_name_,
+                              output_name_);
+        utils::logger()->info("[OpenVINODetector] 输入形状: [{}, {}, {}, {}]", input_shape_[0],
+                              input_shape_[1], input_shape_[2], input_shape_[3]);
+
         // 使用预处理 API 自动处理精度转换（支持 FP16 模型）
         ov::preprocess::PrePostProcessor ppp(model_);
-        
+
         // 配置输入：始终使用 FP32 + NCHW，让 OpenVINO 自动转换
-        ppp.input().tensor()
-            .set_element_type(ov::element::f32)
-            .set_layout("NCHW");
+        ppp.input().tensor().set_element_type(ov::element::f32).set_layout("NCHW");
         ppp.input().model().set_layout("NCHW");
-        
+
         // 配置输出：输出转换为 FP32
         ppp.output().tensor().set_element_type(ov::element::f32);
-        
+
         model_ = ppp.build();
-        
+
         // 配置并编译模型
         ov::AnyMap config;
-        
+
         // 针对不同设备的优化配置
         if (device == "CPU") {
             // CPU 性能优化
@@ -86,19 +86,19 @@ bool OpenVINODetector::init(const std::string& model_path, const std::string& de
             config[ov::hint::performance_mode.name()] = ov::hint::PerformanceMode::LATENCY;
         }
         // AUTO 模式会自动选择最佳设备
-        
+
         utils::logger()->info("[OpenVINODetector] 正在编译模型到设备: {}", device);
         compiled_model_ = core_.compile_model(model_, device, config);
-        
+
         // 创建推理请求
         infer_request_ = compiled_model_.create_infer_request();
-        
+
         // 获取实际输出形状
         auto output_tensor = infer_request_.get_output_tensor();
         output_shape_ = output_tensor.get_shape();
-        utils::logger()->info("[OpenVINODetector] 输出形状: [{}, {}, {}]", 
-                              output_shape_[0], output_shape_[1], output_shape_[2]);
-        
+        utils::logger()->info("[OpenVINODetector] 输出形状: [{}, {}, {}]", output_shape_[0],
+                              output_shape_[1], output_shape_[2]);
+
         utils::logger()->info("[OpenVINODetector] 模型加载成功, 设备: {}", device);
         return true;
     } catch (const ov::Exception& e) {
@@ -127,14 +127,13 @@ std::vector<ArmorObject> OpenVINODetector::detect(const cv::Mat& image) {
     cv::Mat blob = preProcess(image, scale);
 
     // 2. 设置输入
-    ov::Tensor input_tensor(ov::element::f32, 
-                            {1, 3, static_cast<size_t>(params_.input_size.height), 
-                             static_cast<size_t>(params_.input_size.width)});
-    
+    ov::Tensor input_tensor(ov::element::f32, {1, 3, static_cast<size_t>(params_.input_size.height),
+                                               static_cast<size_t>(params_.input_size.width)});
+
     // 复制数据到输入张量
     float* input_data = input_tensor.data<float>();
     std::memcpy(input_data, blob.data, blob.total() * sizeof(float));
-    
+
     infer_request_.set_input_tensor(input_tensor);
 
     // 3. 推理
@@ -144,7 +143,7 @@ std::vector<ArmorObject> OpenVINODetector::detect(const cv::Mat& image) {
     ov::Tensor output_tensor = infer_request_.get_output_tensor();
     const float* output_data = output_tensor.data<const float>();
     auto out_shape = output_tensor.get_shape();
-    
+
     int rows = static_cast<int>(out_shape[1]);
     int dimensions = static_cast<int>(out_shape[2]);
 

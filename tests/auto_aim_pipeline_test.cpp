@@ -90,8 +90,8 @@ void drawVisualization(cv::Mat& img, const PipelineOutput& output) {
     if (output.aim_command.has_value()) {
         line.str("");
         line.clear();
-        line << "Yaw/Pitch: " << std::fixed << std::setprecision(2)
-             << output.aim_command->yaw << " / " << output.aim_command->pitch << " rad";
+        line << "Yaw/Pitch: " << std::fixed << std::setprecision(2) << output.aim_command->yaw
+             << " / " << output.aim_command->pitch << " rad";
         cv::putText(img, line.str(), cv::Point(20, y_offset), cv::FONT_HERSHEY_SIMPLEX, 0.5,
                     cv::Scalar(255, 255, 255), 1);
         y_offset += 20;
@@ -176,15 +176,15 @@ int main(int argc, char** argv) {
 
             utils::PJStreamer pj;
             pj.send_map(
-                {{"target_distance_m",
-                  latest_frame.output.selected_target.has_value()
-                      ? latest_frame.output.selected_target->pos.norm()
-                      : -1.0},
+                {{"target_distance_m", latest_frame.output.selected_target.has_value()
+                                           ? latest_frame.output.selected_target->pos.norm()
+                                           : -1.0},
                  {"timestamp",
                   static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(
                                           latest_frame.input.timestamp.time_since_epoch())
                                           .count())},
-                 {"detection_count", static_cast<double>(latest_frame.output.stats.detection_count)},
+                 {"detection_count",
+                  static_cast<double>(latest_frame.output.stats.detection_count)},
                  {"solve_success", static_cast<double>(latest_frame.output.stats.solved_count)},
                  {"tracker_count", static_cast<double>(latest_frame.output.stats.tracker_count)},
                  {"tracked_candidates",
@@ -251,12 +251,12 @@ int main(int argc, char** argv) {
     if (total_time > 0.0) {
         utils::logger()->info("Average FPS: {:.2f}", frame_count / total_time);
     }
-    utils::logger()->info("Average detections per frame: {:.2f}",
-                          frame_count > 0 ? static_cast<double>(detection_count) / frame_count
-                                          : 0.0);
-    utils::logger()->info("Solve success rate: {:.1f}%",
-                          detection_count > 0 ? 100.0 * solve_success_count / detection_count
-                                              : 0.0);
+    utils::logger()->info(
+        "Average detections per frame: {:.2f}",
+        frame_count > 0 ? static_cast<double>(detection_count) / frame_count : 0.0);
+    utils::logger()->info(
+        "Solve success rate: {:.1f}%",
+        detection_count > 0 ? 100.0 * solve_success_count / detection_count : 0.0);
     utils::logger()->info("Tracking rate: {:.1f}%",
                           frame_count > 0 ? 100.0 * tracking_count / frame_count : 0.0);
 

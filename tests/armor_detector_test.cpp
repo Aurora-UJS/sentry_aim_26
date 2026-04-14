@@ -20,12 +20,12 @@
 int main(int argc, char** argv) {
     // 从配置文件创建检测器
     auto detector = armor::DetectorFactory::createFromConfig("config/detector_config.yaml");
-    
+
     if (!detector) {
         utils::logger()->error("[Test] 检测器创建失败");
         return -1;
     }
-    
+
     // 初始化 PlotJuggler
     utils::PJStreamer pj;
 
@@ -58,16 +58,13 @@ int main(int argc, char** argv) {
         auto start_total = std::chrono::high_resolution_clock::now();
         auto armors = detector->detect(image);
         auto end_total = std::chrono::high_resolution_clock::now();
-        
+
         auto duration =
-            std::chrono::duration_cast<std::chrono::milliseconds>(end_total - start_total)
-                .count();
+            std::chrono::duration_cast<std::chrono::milliseconds>(end_total - start_total).count();
         // 将数据发送到 PlotJuggler
-        pj.send_map({
-            {"detect_duration_ms", static_cast<double>(duration)},
-            {"armor_count", static_cast<double>(armors.size())},
-            {"fps", 1000.0 / static_cast<double>(duration + 1)}
-        });
+        pj.send_map({{"detect_duration_ms", static_cast<double>(duration)},
+                     {"armor_count", static_cast<double>(armors.size())},
+                     {"fps", 1000.0 / static_cast<double>(duration + 1)}});
 
         // 显示结果
         cv::Mat debug_img = detector->getDebugImage();

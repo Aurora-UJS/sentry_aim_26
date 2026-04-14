@@ -476,10 +476,9 @@ std::optional<Armor> TrackerManager::getBestTarget() const {
         return std::nullopt;
     }
 
-    return std::optional<Armor>(*std::min_element(tracked_targets.begin(), tracked_targets.end(),
-                                                  [](const Armor& lhs, const Armor& rhs) {
-                                                      return lhs.pos.norm() < rhs.pos.norm();
-                                                  }));
+    return std::optional<Armor>(*std::min_element(
+        tracked_targets.begin(), tracked_targets.end(),
+        [](const Armor& lhs, const Armor& rhs) { return lhs.pos.norm() < rhs.pos.norm(); }));
 }
 
 std::vector<Armor> TrackerManager::getTrackedTargets(double prediction_time) const {

@@ -99,7 +99,8 @@ PipelineFrame AutoAimPipeline::process(const PipelineInput& input) {
     frame.output.stats.tracked_candidate_count = frame.output.tracked_targets.size();
 
     stage_start = std::chrono::steady_clock::now();
-    frame.output.selected_target = components_.target_selector->select(frame.output.tracked_targets);
+    frame.output.selected_target =
+        components_.target_selector->select(frame.output.tracked_targets);
     stage_end = std::chrono::steady_clock::now();
     frame.output.stats.timings.select_ms = elapsedMilliseconds(stage_start, stage_end);
 

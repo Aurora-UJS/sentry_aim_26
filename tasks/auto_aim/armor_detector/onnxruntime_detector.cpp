@@ -39,7 +39,7 @@ bool OnnxRuntimeDetector::init(const std::string& model_path) {
             migraphx_options.migraphx_int8_enable = 0;
             migraphx_options.migraphx_use_native_calibration_table = 0;
             migraphx_options.migraphx_int8_calibration_table_name = nullptr;
-            
+
             session_options_->AppendExecutionProvider_MIGraphX(migraphx_options);
             utils::logger()->info("[OnnxRuntimeDetector] MIGraphX (AMD GPU) 加速已启用");
             utils::logger()->info("[OnnxRuntimeDetector] 首次运行需要编译模型，请等待...");

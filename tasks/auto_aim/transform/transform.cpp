@@ -19,8 +19,7 @@ Eigen::Vector3d parseVector3(const YAML::Node& node, const Eigen::Vector3d& fall
     return Eigen::Vector3d(node[0].as<double>(), node[1].as<double>(), node[2].as<double>());
 }
 
-Eigen::Quaterniond parseQuaternionWxyz(const YAML::Node& node,
-                                       const Eigen::Quaterniond& fallback) {
+Eigen::Quaterniond parseQuaternionWxyz(const YAML::Node& node, const Eigen::Quaterniond& fallback) {
     if (!node || !node.IsSequence() || node.size() != 4) {
         return fallback;
     }
@@ -67,7 +66,8 @@ TransformConfig TransformConfig::fromYaml(const std::string& yaml_path) {
         const YAML::Node tf_node = root["target_transform"];
         if (!tf_node) {
             utils::logger()->info(
-                "[TransformConfig] No 'target_transform' node found in {}, using identity extrinsic",
+                "[TransformConfig] No 'target_transform' node found in {}, using identity "
+                "extrinsic",
                 yaml_path);
             return config;
         }
@@ -92,8 +92,7 @@ TransformConfig TransformConfig::fromYaml(const std::string& yaml_path) {
             config.source_frame, config.target_frame, yaml_path, config.translation.x(),
             config.translation.y(), config.translation.z());
     } catch (const YAML::Exception& e) {
-        utils::logger()->error("[TransformConfig] YAML parse error in {}: {}", yaml_path,
-                               e.what());
+        utils::logger()->error("[TransformConfig] YAML parse error in {}: {}", yaml_path, e.what());
     } catch (const std::exception& e) {
         utils::logger()->error("[TransformConfig] Failed to load {}: {}", yaml_path, e.what());
     }

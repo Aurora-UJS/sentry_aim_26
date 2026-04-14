@@ -10,10 +10,10 @@
 #include "auto_aim/pipeline/pipeline.hpp"
 #include "utils/logger/logger.hpp"
 
+#include <utility>
+
 #include <opencv2/calib3d.hpp>
 #include <opencv2/opencv.hpp>
-
-#include <utility>
 
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
@@ -27,8 +27,7 @@ constexpr double kFy = 1806.46896;
 constexpr double kCx = 711.11997;
 constexpr double kCy = 562.49495;
 
-const cv::Mat kTestCameraMatrix =
-    (cv::Mat_<double>(3, 3) << kFx, 0, kCx, 0, kFy, kCy, 0, 0, 1);
+const cv::Mat kTestCameraMatrix = (cv::Mat_<double>(3, 3) << kFx, 0, kCx, 0, kFy, kCy, 0, 0, 1);
 const cv::Mat kTestDistCoeffs = (cv::Mat_<double>(1, 5) << 0, 0, 0, 0, 0);
 
 std::vector<cv::Point2f> generateSyntheticImagePoints(const std::vector<cv::Point3f>& object_points,
@@ -91,8 +90,8 @@ TEST_CASE("AutoAimPipeline smoke path produces a target and aim command", "[pipe
     aim_solver_config.bullet_speed_mps = tracker_config.bullet_speed;
 
     armor::AutoAimPipeline::Components components;
-    components.detector = std::make_unique<FakeDetector>(
-        std::vector<armor::ArmorObject>{makeSyntheticDetection()});
+    components.detector =
+        std::make_unique<FakeDetector>(std::vector<armor::ArmorObject>{makeSyntheticDetection()});
     components.pnp_solver = std::make_unique<armor::PnpSolver>("config/camera_info.yaml");
     components.tracker_manager = std::make_unique<armor::TrackerManager>(tracker_config);
     components.transformer = std::make_unique<armor::TargetTransformer>();
@@ -122,14 +121,14 @@ TEST_CASE("AutoAimPipeline smoke path produces a target and aim command", "[pipe
     CHECK_THAT(result.output.selected_target->pos.x(), WithinAbs(0.1, 0.02));
     CHECK_THAT(result.output.selected_target->pos.y(), WithinAbs(-0.05, 0.02));
     CHECK_THAT(result.output.selected_target->pos.z(), WithinAbs(1.2, 0.02));
-    CHECK_THAT(aim_command->yaw,
-               WithinAbs(std::atan2(transformed_target->position.x(), transformed_target->position.z()),
+    CHECK_THAT(aim_command->yaw, WithinAbs(std::atan2(transformed_target->position.x(),
+                                                      transformed_target->position.z()),
+                                           1e-6));
+    CHECK_THAT(aim_command->pitch,
+               WithinAbs(std::atan2(-transformed_target->position.y(),
+                                    std::hypot(transformed_target->position.x(),
+                                               transformed_target->position.z())),
                          1e-6));
-    CHECK_THAT(
-        aim_command->pitch,
-        WithinAbs(std::atan2(-transformed_target->position.y(),
-                             std::hypot(transformed_target->position.x(), transformed_target->position.z())),
-                      1e-6));
     CHECK_THAT(aim_command->distance_m, WithinAbs(transformed_target->position.norm(), 1e-6));
     CHECK_THAT(aim_command->flight_time_s,
                WithinAbs(transformed_target->position.norm() / tracker_config.bullet_speed, 1e-6));
