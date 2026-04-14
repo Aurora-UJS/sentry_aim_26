@@ -16,6 +16,7 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -159,6 +160,13 @@ public:
      * @return 预测的装甲板，如果没有有效跟踪返回nullopt
      */
     std::optional<Armor> getBestTarget() const;
+
+    /**
+     * @brief 获取当前稳定跟踪目标列表
+     * @param prediction_time 预测提前量（秒）
+     * @return 预测后的有效目标
+     */
+    std::vector<Armor> getTrackedTargets(double prediction_time = 0.0) const;
 
     /**
      * @brief 获取所有活跃的跟踪器

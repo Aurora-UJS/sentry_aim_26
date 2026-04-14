@@ -24,3 +24,8 @@ projection_matrix:
   data: [1790.52356,    0.     ,  710.04861,    0.     ,
             0.     , 1794.3208 ,  562.32704,    0.     ,
             0.     ,    0.     ,    1.     ,    0.     ]
+target_transform:
+  source_frame: camera
+  target_frame: gimbal
+  translation_m: [0.02, -0.01, 0.08]
+  rotation_rpy_deg: [0.0, 0.0, 90.0]

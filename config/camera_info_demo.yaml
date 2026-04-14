@@ -12,3 +12,8 @@ distortion_coefficients:
   rows: 1
   cols: 5
   data: [-0.077944626599568856, 0.15447826031486889, -0.0025714394278524674, 0.00083016311301273629, 0.0]
+target_transform:
+  source_frame: camera
+  target_frame: gimbal
+  translation_m: [0.0, 0.0, 0.0]
+  rotation_rpy_deg: [0.0, 0.0, 0.0]

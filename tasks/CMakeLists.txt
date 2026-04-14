@@ -8,6 +8,10 @@ set(TASKS_SOURCES
     auto_aim/armor_detector/onnxruntime_detector.cpp
     auto_aim/armor_solver/solver.cpp
     auto_aim/armor_tracker/tracker.cpp
+    auto_aim/transform/transform.cpp
+    auto_aim/target_selector/target_selector.cpp
+    auto_aim/aim_solver/aim_solver.cpp
+    auto_aim/pipeline/pipeline.cpp
 )
 
 # OpenVINO 检测器

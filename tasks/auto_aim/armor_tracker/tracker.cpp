@@ -471,29 +471,38 @@ void TrackerManager::removeLostedTrackers() {
 }
 
 std::optional<Armor> TrackerManager::getBestTarget() const {
-    // 找到距离最近的稳定跟踪
-    std::optional<Armor> best_target;
-    double min_distance = std::numeric_limits<double>::max();
+    auto tracked_targets = getTrackedTargets();
+    if (tracked_targets.empty()) {
+        return std::nullopt;
+    }
+
+    return std::optional<Armor>(*std::min_element(tracked_targets.begin(), tracked_targets.end(),
+                                                  [](const Armor& lhs, const Armor& rhs) {
+                                                      return lhs.pos.norm() < rhs.pos.norm();
+                                                  }));
+}
+
+std::vector<Armor> TrackerManager::getTrackedTargets(double prediction_time) const {
+    std::vector<Armor> tracked_targets;
+    tracked_targets.reserve(trackers_.size());
 
     for (const auto& tracker : trackers_) {
-        if (!tracker->isTracking())
+        if (!tracker->isTracking()) {
             continue;
+        }
 
-        // 计算子弹飞行时间（简化：假设直线飞行）
-        Armor predicted = tracker->getPredictedArmor(0.0);
-        double distance = predicted.pos.norm();
-        double flight_time = distance / config_.bullet_speed;
+        Armor predicted = tracker->getPredictedArmor(prediction_time);
+        if (prediction_time <= 0.0 && config_.bullet_speed > 0.0) {
+            const double flight_time = predicted.pos.norm() / config_.bullet_speed;
+            predicted = tracker->getPredictedArmor(flight_time);
+        }
 
-        // 预测子弹到达时的位置
-        predicted = tracker->getPredictedArmor(flight_time);
-
-        if (distance < min_distance) {
-            min_distance = distance;
-            best_target = predicted;
+        if (predicted.is_ok) {
+            tracked_targets.push_back(predicted);
         }
     }
 
-    return best_target;
+    return tracked_targets;
 }
 
 }  // namespace armor

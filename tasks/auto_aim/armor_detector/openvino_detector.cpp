@@ -1,16 +1,16 @@
 /**
  ************************************************************************
  *
- * @file yolo_detector.cpp
+ * @file openvino_detector.cpp
  * @author Xlqmu
- * @brief 基于 YOLO 的纯神经网络装甲板检测器实现 (ONNX Runtime)
+ * @brief 基于 YOLO 的纯神经网络装甲板检测器实现 (OpenVINO)
  *
  * ************************************************************************
  * @copyright Copyright (c) 2025 Aurora Vision
  * ************************************************************************
  */
 
-#include "auto_aim/armor_detector/onnxruntime_detector.hpp"
+#include "auto_aim/armor_detector/openvino_detector.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -18,83 +18,107 @@
 
 namespace armor {
 
-OnnxRuntimeDetector::OnnxRuntimeDetector() {
-    utils::logger()->info("[OnnxRuntimeDetector] 创建实例");
+OpenVINODetector::OpenVINODetector() {
+    utils::logger()->info("[OpenVINODetector] 创建实例");
+    
+    // 打印可用设备
+    auto devices = core_.get_available_devices();
+    std::string dev_list;
+    for (const auto& dev : devices) {
+        if (!dev_list.empty()) dev_list += ", ";
+        dev_list += dev;
+    }
+    utils::logger()->info("[OpenVINODetector] 可用设备: {}", dev_list);
 }
 
-bool OnnxRuntimeDetector::init(const std::string& model_path) {
+bool OpenVINODetector::init(const std::string& model_path, const std::string& device) {
     try {
-        env_ = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "OnnxRuntimeDetector");
-        session_options_ = std::make_unique<Ort::SessionOptions>();
-
-        // 设置线程数
-        session_options_->SetIntraOpNumThreads(4);
-        session_options_->SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-
-        // GPU 加速配置 - MIGraphX (AMD GPU)
-        try {
-            OrtMIGraphXProviderOptions migraphx_options{};
-            migraphx_options.device_id = 0;
-            migraphx_options.migraphx_fp16_enable = 0;  // 禁用 FP16 提高 gfx1103 稳定性
-            migraphx_options.migraphx_int8_enable = 0;
-            migraphx_options.migraphx_use_native_calibration_table = 0;
-            migraphx_options.migraphx_int8_calibration_table_name = nullptr;
-            
-            session_options_->AppendExecutionProvider_MIGraphX(migraphx_options);
-            utils::logger()->info("[OnnxRuntimeDetector] MIGraphX (AMD GPU) 加速已启用");
-            utils::logger()->info("[OnnxRuntimeDetector] 首次运行需要编译模型，请等待...");
-        } catch (const Ort::Exception& e) {
-            utils::logger()->warn("[OnnxRuntimeDetector] MIGraphX 初始化失败: {}", e.what());
-        }
-
-        // 创建会话
-        session_ = std::make_unique<Ort::Session>(*env_, model_path.c_str(), *session_options_);
-
+        device_ = device;
+        
+        // 读取模型
+        utils::logger()->info("[OpenVINODetector] 正在加载模型: {}", model_path);
+        model_ = core_.read_model(model_path);
+        
         // 获取输入输出信息
-        size_t num_input_nodes = session_->GetInputCount();
-        size_t num_output_nodes = session_->GetOutputCount();
-
-        input_names_.clear();
-        input_names_str_.clear();
-        output_names_.clear();
-        output_names_str_.clear();
-
-        for (size_t i = 0; i < num_input_nodes; i++) {
-            Ort::AllocatedStringPtr input_name = session_->GetInputNameAllocated(i, allocator_);
-            input_names_str_.push_back(input_name.get());
-            input_names_.push_back(input_names_str_.back().c_str());
+        auto inputs = model_->inputs();
+        auto outputs = model_->outputs();
+        
+        if (inputs.empty() || outputs.empty()) {
+            utils::logger()->error("[OpenVINODetector] 模型输入/输出为空");
+            return false;
         }
-
-        for (size_t i = 0; i < num_output_nodes; i++) {
-            Ort::AllocatedStringPtr output_name = session_->GetOutputNameAllocated(i, allocator_);
-            output_names_str_.push_back(output_name.get());
-            output_names_.push_back(output_names_str_.back().c_str());
+        
+        input_name_ = inputs[0].get_any_name();
+        output_name_ = outputs[0].get_any_name();
+        input_shape_ = inputs[0].get_shape();
+        
+        utils::logger()->info("[OpenVINODetector] 输入名: {}, 输出名: {}", input_name_, output_name_);
+        utils::logger()->info("[OpenVINODetector] 输入形状: [{}, {}, {}, {}]", 
+                              input_shape_[0], input_shape_[1], input_shape_[2], input_shape_[3]);
+        
+        // 使用预处理 API 自动处理精度转换（支持 FP16 模型）
+        ov::preprocess::PrePostProcessor ppp(model_);
+        
+        // 配置输入：始终使用 FP32 + NCHW，让 OpenVINO 自动转换
+        ppp.input().tensor()
+            .set_element_type(ov::element::f32)
+            .set_layout("NCHW");
+        ppp.input().model().set_layout("NCHW");
+        
+        // 配置输出：输出转换为 FP32
+        ppp.output().tensor().set_element_type(ov::element::f32);
+        
+        model_ = ppp.build();
+        
+        // 配置并编译模型
+        ov::AnyMap config;
+        
+        // 针对不同设备的优化配置
+        if (device == "CPU") {
+            // CPU 性能优化
+            config[ov::hint::performance_mode.name()] = ov::hint::PerformanceMode::LATENCY;
+            config[ov::hint::num_requests.name()] = 1;
+        } else if (device == "GPU") {
+            // GPU 性能优化
+            config[ov::hint::performance_mode.name()] = ov::hint::PerformanceMode::LATENCY;
+        } else if (device == "NPU") {
+            // NPU 性能优化
+            config[ov::hint::performance_mode.name()] = ov::hint::PerformanceMode::LATENCY;
         }
-
-        utils::logger()->info("[OnnxRuntimeDetector] 模型加载成功: {}", model_path);
+        // AUTO 模式会自动选择最佳设备
+        
+        utils::logger()->info("[OpenVINODetector] 正在编译模型到设备: {}", device);
+        compiled_model_ = core_.compile_model(model_, device, config);
+        
+        // 创建推理请求
+        infer_request_ = compiled_model_.create_infer_request();
+        
+        // 获取实际输出形状
+        auto output_tensor = infer_request_.get_output_tensor();
+        output_shape_ = output_tensor.get_shape();
+        utils::logger()->info("[OpenVINODetector] 输出形状: [{}, {}, {}]", 
+                              output_shape_[0], output_shape_[1], output_shape_[2]);
+        
+        utils::logger()->info("[OpenVINODetector] 模型加载成功, 设备: {}", device);
         return true;
-    } catch (const Ort::Exception& e) {
-        utils::logger()->error("[OnnxRuntimeDetector] ONNX Runtime 错误: {}", e.what());
+    } catch (const ov::Exception& e) {
+        utils::logger()->error("[OpenVINODetector] OpenVINO 错误: {}", e.what());
         return false;
     } catch (const std::exception& e) {
-        utils::logger()->error("[OnnxRuntimeDetector] 初始化异常: {}", e.what());
+        utils::logger()->error("[OpenVINODetector] 初始化异常: {}", e.what());
         return false;
     }
 }
 
-void OnnxRuntimeDetector::setParams(const DetectorParams& params) {
+void OpenVINODetector::setParams(const DetectorParams& params) {
     params_ = params;
     if (!params_.model_path.empty()) {
         init(params_.model_path);
     }
 }
 
-std::vector<ArmorObject> OnnxRuntimeDetector::detect(const cv::Mat& image) {
+std::vector<ArmorObject> OpenVINODetector::detect(const cv::Mat& image) {
     if (image.empty()) {
-        return {};
-    }
-    if (!session_) {
-        utils::logger()->error("[OnnxRuntimeDetector] 会话未初始化");
         return {};
     }
 
@@ -102,79 +126,27 @@ std::vector<ArmorObject> OnnxRuntimeDetector::detect(const cv::Mat& image) {
     float scale = 1.0F;
     cv::Mat blob = preProcess(image, scale);
 
-    // 2. 准备输入 Tensor
-    std::vector<int64_t> input_shape = {1, 3, params_.input_size.height, params_.input_size.width};
-    size_t input_tensor_size =
-        static_cast<size_t>(1) * 3 * params_.input_size.height * params_.input_size.width;
-
-    // 检查模型输入类型
-    auto input_type_info = session_->GetInputTypeInfo(0);
-    auto input_tensor_type = input_type_info.GetTensorTypeAndShapeInfo().GetElementType();
-
-    auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-
-    // 使用 vector 存储 input_tensor 以避免默认构造问题
-    std::vector<Ort::Value> input_tensors;
-    cv::Mat blob_fp16;  // 必须在此处声明以保持数据在 Run 期间有效
-
-    if (input_tensor_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
-        // FP32 模型
-        float* input_data = reinterpret_cast<float*>(blob.data);
-        input_tensors.push_back(Ort::Value::CreateTensor<float>(
-            memory_info, input_data, input_tensor_size, input_shape.data(), input_shape.size()));
-    } else if (input_tensor_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
-        // FP16 模型 - 需要转换
-        blob.convertTo(blob_fp16, CV_16F);
-
-        // CV_16F 数据本质上是 uint16_t (half float)
-        Ort::Float16_t* input_data = reinterpret_cast<Ort::Float16_t*>(blob_fp16.data);
-        input_tensors.push_back(Ort::Value::CreateTensor<Ort::Float16_t>(
-            memory_info, input_data, input_tensor_size, input_shape.data(), input_shape.size()));
-    } else {
-        utils::logger()->error("[OnnxRuntimeDetector] 不支持的模型输入类型: {}",
-                               static_cast<int>(input_tensor_type));
-        return {};
-    }
+    // 2. 设置输入
+    ov::Tensor input_tensor(ov::element::f32, 
+                            {1, 3, static_cast<size_t>(params_.input_size.height), 
+                             static_cast<size_t>(params_.input_size.width)});
+    
+    // 复制数据到输入张量
+    float* input_data = input_tensor.data<float>();
+    std::memcpy(input_data, blob.data, blob.total() * sizeof(float));
+    
+    infer_request_.set_input_tensor(input_tensor);
 
     // 3. 推理
-    auto output_tensors =
-        session_->Run(Ort::RunOptions{nullptr}, input_names_.data(), input_tensors.data(), 1,
-                      output_names_.data(), output_names_.size());
+    infer_request_.infer();
 
-    // 4. 后处理
-    // 假设只有一个输出
-    float* output_data = nullptr;
-    std::vector<float> output_data_fp32;  // 如果需要转换，用于存储 FP32 数据
-
-    auto output_type_info = output_tensors[0].GetTensorTypeAndShapeInfo();
-    auto output_tensor_type = output_type_info.GetElementType();
-    auto output_shape = output_type_info.GetShape();
-
-    int rows = static_cast<int>(output_shape[1]);
-    int dimensions = static_cast<int>(output_shape[2]);
-    size_t output_size = static_cast<size_t>(rows) * dimensions;
-
-    if (output_tensor_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT) {
-        output_data = output_tensors[0].GetTensorMutableData<float>();
-    } else if (output_tensor_type == ONNX_TENSOR_ELEMENT_DATA_TYPE_FLOAT16) {
-        // 输出也是 FP16，需要转回 FP32 供后处理使用
-        const Ort::Float16_t* raw_output = output_tensors[0].GetTensorData<Ort::Float16_t>();
-        output_data_fp32.resize(output_size);
-
-        // 使用 OpenCV 进行批量转换 (利用 Mat)
-        cv::Mat output_mat_fp16(
-            1, static_cast<int>(output_size), CV_16F,
-            const_cast<void*>(reinterpret_cast<const void*>(raw_output)));  // NOLINT
-        cv::Mat output_mat_fp32;
-        output_mat_fp16.convertTo(output_mat_fp32, CV_32F);
-
-        memcpy(output_data_fp32.data(), output_mat_fp32.data, output_size * sizeof(float));
-        output_data = output_data_fp32.data();
-    } else {
-        utils::logger()->error("[OnnxRuntimeDetector] 不支持的模型输出类型: {}",
-                               static_cast<int>(output_tensor_type));
-        return {};
-    }
+    // 4. 获取输出
+    ov::Tensor output_tensor = infer_request_.get_output_tensor();
+    const float* output_data = output_tensor.data<const float>();
+    auto out_shape = output_tensor.get_shape();
+    
+    int rows = static_cast<int>(out_shape[1]);
+    int dimensions = static_cast<int>(out_shape[2]);
 
     auto armors = postProcess(output_data, rows, dimensions, scale, image);
 
@@ -198,7 +170,7 @@ std::vector<ArmorObject> OnnxRuntimeDetector::detect(const cv::Mat& image) {
     return armors;
 }
 
-cv::Mat OnnxRuntimeDetector::preProcess(const cv::Mat& image, float& scale) const {
+cv::Mat OpenVINODetector::preProcess(const cv::Mat& image, float& scale) const {
     // 计算缩放比例 (保持长宽比)
     int w = image.cols;
     int h = image.rows;
@@ -225,13 +197,13 @@ cv::Mat OnnxRuntimeDetector::preProcess(const cv::Mat& image, float& scale) cons
     return blob;
 }
 
-std::vector<ArmorObject> OnnxRuntimeDetector::postProcess(
+std::vector<ArmorObject> OpenVINODetector::postProcess(
     const float* data, int rows, int dimensions, float scale,
     [[maybe_unused]] const cv::Mat& origin_img) const {
     std::vector<ArmorObject> armors;
 
     if (dimensions < 22) {
-        utils::logger()->warn("[OnnxRuntimeDetector] 模型输出维度不足: {}", dimensions);
+        utils::logger()->warn("[OpenVINODetector] 模型输出维度不足: {}", dimensions);
         return {};
     }
 
@@ -366,7 +338,7 @@ std::vector<ArmorObject> OnnxRuntimeDetector::postProcess(
     std::vector<int> indices;
     cv::dnn::NMSBoxes(boxes, confidences, params_.conf_threshold, params_.nms_threshold, indices);
 
-    utils::logger()->debug("[OnnxRuntimeDetector] NMS 前: {}, NMS 后: {}", boxes.size(),
+    utils::logger()->debug("[OpenVINODetector] NMS 前: {}, NMS 后: {}", boxes.size(),
                            indices.size());
 
     for (int idx : indices) {
